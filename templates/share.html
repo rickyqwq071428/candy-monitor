@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}分享管理{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>🔗 分享管理</h2>
+    <div class="breadcrumb">系统管理 / 分享设置</div>
+</div>
+
+<div class="content">
+    <!-- 创建分享 -->
+    <div class="card" style="margin-bottom:24px;">
+        <h3>➕ 创建分享链接</h3>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+            <input type="text" id="shareTitle" placeholder="分享标题（可选）" value="喜糖伴手礼竞品数据" style="padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-size:14px;width:240px;">
+            <select id="sharePermission" style="padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-size:14px;">
+                <option value="readonly">只读</option>
+                <option value="viewer">可查看</option>
+                <option value="admin">完全管理</option>
+            </select>
+            <select id="shareExpiry" style="padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-size:14px;">
+                <option value="24h">24小时</option>
+                <option value="7d" selected>7天</option>
+                <option value="30d">30天</option>
+                <option value="forever">永久有效</option>
+            </select>
+            <button class="btn btn-primary" style="padding:10px 20px;" onclick="createShare()">生成链接</button>
+        </div>
+        <div id="newLinkResult" style="margin-top:16px;display:none;"></div>
+    </div>
+
+    <!-- 分享链接列表 -->
+    <div class="card">
+        <h3>📋 我的分享链接</h3>
+        {% if share_links %}
+        <table>
+            <thead><tr><th>标题</th><th>权限</th><th>有效期</th><th>访问次数</th><th>状态</th><th>操作</th></tr></thead>
+            <tbody>
+                {% for link in share_links %}
+                <tr>
+                    <td>{{ link.title }}</td>
+                    <td>
+                        {% if link.permission == 'readonly' %}<span class="badge badge-taobao">只读</span>
+                        {% elif link.permission == 'viewer' %}<span class="badge badge-douyin">可查看</span>
+                        {% else %}<span class="badge badge-xhs">完全管理</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ link.expiry_type }}</td>
+                    <td>{{ link.visit_count }}</td>
+                    <td>
+                        {% if link.revoked %}
+                        <span style="color:#E8547E;">已撤销</span>
+                        {% else %}
+                        <span style="color:#4CAF50;">有效</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn btn-outline" style="font-size:12px;padding:4px 10px;" onclick="copyLink('{{ link.token }}')">复制</button>
+                            {% if not link.revoked %}
+                            <button class="btn btn-danger" style="font-size:12px;padding:4px 10px;" onclick="revokeLink('{{ link.token }}')">撤销</button>
+                            <button class="btn btn-outline" style="font-size:12px;padding:4px 10px;" onclick="regenerateLink('{{ link.token }}')">刷新</button>
+                            {% endif %}
+                            <button class="btn btn-danger" style="font-size:12px;padding:4px 10px;" onclick="deleteLink('{{ link.token }}')">删除</button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state"><div class="icon">🔗</div><p>暂无分享链接，请先创建一个</p></div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+async function createShare() {
+    const resp = await fetch('/api/share/create', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            title: document.getElementById('shareTitle').value,
+            permission: document.getElementById('sharePermission').value,
+            expiry_type: document.getElementById('shareExpiry').value
+        })
+    });
+    const data = await resp.json();
+    const div = document.getElementById('newLinkResult');
+    div.style.display = 'block';
+    if (data.success) {
+        const link = window.location.origin + data.url;
+        div.innerHTML = '<div style="background:#E8F5E9;padding:16px;border-radius:8px;color:#2E7D32;">✅ 链接已生成！<br><input type="text" value="'+link+'" style="width:100%;padding:8px;margin-top:8px;border:1px solid #c8e6c9;border-radius:4px;" onclick="this.select()"></div>';
+    } else {
+        div.innerHTML = '<div style="background:#FFEBEE;padding:16px;border-radius:8px;color:#C62828;">❌ 生成失败</div>';
+    }
+}
+
+function copyLink(token) {
+    const link = window.location.origin + '/s/' + token;
+    navigator.clipboard.writeText(link).then(function() {
+        alert('链接已复制到剪贴板！');
+    });
+}
+
+async function revokeLink(token) {
+    if (!confirm('确定撤销此分享链接？')) return;
+    await fetch('/api/share/revoke', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});
+    location.reload();
+}
+async function regenerateLink(token) {
+    const resp = await fetch('/api/share/regenerate', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});
+    const data = await resp.json();
+    if (data.success) alert('新链接: ' + window.location.origin + data.url);
+    location.reload();
+}
+async function deleteLink(token) {
+    if (!confirm('确定永久删除此链接？')) return;
+    await fetch('/api/share/delete', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});
+    location.reload();
+}
+</script>
+{% endblock %}

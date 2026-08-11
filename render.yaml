@@ -1,0 +1,21 @@
+# Render.com 免费部署配置
+# 自动检测 Python 项目并部署 Web 服务
+
+services:
+  - type: web
+    name: candy-monitor
+    runtime: python
+    region: singapore          # 新加坡（国内访问较快）
+    plan: free                 # 免费套餐
+    buildCommand: pip install -r requirements.txt && python -c "from database import init_db; init_db()" && python import_real_data.py
+    startCommand: python run.py
+    healthCheckPath: /health
+    envVars:
+      - key: CANDY_DEBUG
+        value: "false"
+      - key: CANDY_THREADS
+        value: "2"            # 免费套餐资源有限，减少线程
+
+    # 免费套餐会在 15 分钟无访问后休眠
+    # 下次访问时自动唤醒（冷启动约 30-60 秒）
+    # 可以使用 UptimeRobot 等免费监控服务定期访问防止休眠

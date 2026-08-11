@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}销量排行{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>🏆 销量排行</h2>
+    <div class="breadcrumb">数据看板 / 销量排行</div>
+</div>
+
+<div class="content">
+    <div class="card">
+        <div class="filter-bar">
+            <select onchange="filterPlatform(this.value)">
+                <option value="">全部平台</option>
+                {% for p in platforms %}
+                <option value="{{ p }}" {% if current_platform == p %}selected{% endif %}>{{ p }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" id="keywordFilter" placeholder="搜索关键词或商品名..." value="{{ current_keyword }}" style="width:240px;" onkeydown="if(event.key==='Enter')filterKeyword()">
+            <button class="btn btn-outline" onclick="filterKeyword()">搜索</button>
+            <button class="btn btn-outline" onclick="window.location.href='/rankings'">重置</button>
+        </div>
+
+        {% if rankings %}
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:60px;">排名</th>
+                    <th style="width:80px;">平台</th>
+                    <th>商品名称</th>
+                    <th>店铺</th>
+                    <th style="width:90px;">价格</th>
+                    <th style="width:80px;">销量</th>
+                    <th style="width:80px;">关键词</th>
+                    <th style="width:80px;">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rankings %}
+                <tr>
+                    <td>
+                        {% if r.rank <= 3 %}
+                        <span class="rank-badge top{{ r.rank }}">{{ r.rank }}</span>
+                        {% else %}
+                        <span class="rank-badge">{{ r.rank }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if '淘宝' in r.platform %}<span class="badge badge-taobao">淘宝</span>
+                        {% elif '抖音' in r.platform %}<span class="badge badge-douyin">抖音</span>
+                        {% elif '小红书' in r.platform %}<span class="badge badge-xhs">小红书</span>
+                        {% else %}<span class="badge badge-dianping">{{ r.platform }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="link-text">
+                        {% if r.product_link %}
+                        <a href="{{ r.product_link }}" target="_blank">{{ r.product_name }}</a>
+                        {% else %}
+                        {{ r.product_name }}
+                        {% endif %}
+                    </td>
+                    <td class="link-text">
+                        {% if r.shop_name %}
+                        {{ r.shop_name }}
+                        {% else %}-{% endif %}
+                    </td>
+                    <td><span class="price-tag" style="font-size:15px;">¥{{ r.price }}</span></td>
+                    <td>{{ r.sales if r.sales else '-' }}</td>
+                    <td><span style="font-size:12px;color:var(--text-muted);">{{ r.keyword }}</span></td>
+                    <td class="link-text">
+                        {% if r.product_link %}<a href="{{ r.product_link }}" target="_blank">查看 →</a>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state"><div class="icon">🏆</div><p>暂无排行数据</p><p style="font-size:13px;margin-top:8px;">请先通过 <a href="/excel">数据导入</a> 或 <a href="/quick-collect">快速采集</a> 获取数据</p></div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function filterPlatform(platform) {
+    let url = '/rankings';
+    if (platform) url += '?platform=' + encodeURIComponent(platform);
+    let kw = document.getElementById('keywordFilter').value;
+    if (kw) url += (platform ? '&' : '?') + 'keyword=' + encodeURIComponent(kw);
+    window.location.href = url;
+}
+function filterKeyword() {
+    let kw = document.getElementById('keywordFilter').value;
+    let url = '/rankings';
+    let params = [];
+    {% if current_platform %}params.push('platform=' + encodeURIComponent('{{ current_platform }}'));{% endif %}
+    if (kw) params.push('keyword=' + encodeURIComponent(kw));
+    if (params.length) url += '?' + params.join('&');
+    window.location.href = url;
+}
+</script>
+{% endblock %}

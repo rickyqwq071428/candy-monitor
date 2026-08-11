@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}快速采集{% endblock %}
+
+{% block extra_head %}
+<style>
+    .scheme-card {
+        padding: 20px 24px; border-radius: var(--radius); margin-bottom: 16px;
+        box-shadow: var(--shadow); transition: all 0.3s; background: white;
+        border-left: 4px solid var(--brand);
+    }
+    .scheme-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+    .scheme-card h4 { font-family: 'Noto Serif SC', serif; font-size: 16px; color: var(--brand); margin-bottom: 4px; }
+    .scheme-card .meta { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+    .scheme-card p { font-size: 14px; color: var(--text-secondary); line-height: 1.7; }
+    .scheme-card .link-btn {
+        display: inline-block; margin-top: 8px; padding: 6px 14px;
+        background: var(--brand); color: white; text-decoration: none;
+        border-radius: 6px; font-size: 13px; transition: all 0.2s;
+    }
+    .scheme-card .link-btn:hover { background: var(--brand-light); }
+
+    .bookmark-code {
+        background: #1E1E2E; color: #A6E3A1; padding: 20px; border-radius: var(--radius-sm);
+        font-family: 'Consolas', 'Courier New', monospace; font-size: 12px;
+        line-height: 1.5; overflow-x: auto; white-space: pre-wrap;
+        margin-top: 12px; position: relative;
+    }
+    .copy-btn {
+        position: absolute; top: 10px; right: 10px;
+        padding: 4px 12px; background: rgba(255,255,255,0.1); color: white;
+        border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;
+        cursor: pointer; font-size: 12px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>⚡ 快速采集</h2>
+    <div class="breadcrumb">数据采集 / 零成本方案</div>
+</div>
+
+<div class="content">
+    <div class="card" style="margin-bottom:24px;">
+        <h3>🔑 当前采集模式: <span style="color:var(--gold);">{{ mode_info.name }}</span></h3>
+        <p style="color:var(--text-secondary);font-size:14px;">{{ mode_info.description }} | 频次限制: {{ mode_info.rate_limit }}</p>
+        <p style="color:var(--text-secondary);font-size:14px;">认证要求: {{ mode_info.auth_required }}</p>
+    </div>
+
+    <h3 style="font-family:'Noto Serif SC',serif;color:var(--brand);margin-bottom:16px;">📋 零成本替代方案（均无需企业资质）</h3>
+
+    <!-- 方案A -->
+    <div class="scheme-card">
+        <h4>A. 淘宝个人开发者 API</h4>
+        <div class="meta">门槛: 仅需身份证 | 频次: 500次/天 | 无需企业认证</div>
+        <p>注册淘宝开放平台个人开发者，完成身份证实名认证即可申请。可获取基础字段（标题、主图、一口价），虽然无销量数据但胜在自动化程度高。适合作为数据采集的基础层。</p>
+        <p style="color:var(--text-muted);font-size:12px;">操作: 访问 open.taobao.com → 注册"个人开发者" → 身份证实名 → 创建应用 → 获取 AppKey</p>
+    </div>
+
+    <!-- 方案B -->
+    <div class="scheme-card" style="border-left-color:var(--gold);">
+        <h4>B. 生意参谋免费版 ⭐ 推荐</h4>
+        <div class="meta">门槛: 免费开个人淘宝店 | 数据维度最全 | 无需API密钥</div>
+        <p>在淘宝免费开一个个人店铺即可使用生意参谋免费版。可查看行业排行、买家画像、搜索词分析等。数据直接复制粘贴到 Excel 模板即可导入系统。</p>
+        <a href="https://sycm.taobao.com" target="_blank" class="link-btn">访问生意参谋 →</a>
+    </div>
+
+    <!-- 方案C -->
+    <div class="scheme-card" style="border-left-color:var(--pink-dark);">
+        <h4>C. 阿里指数</h4>
+        <div class="meta">门槛: 零注册 | 完全免费 | 无需认证</div>
+        <p>访问 1688 阿里指数，搜索"喜糖""伴手礼"关键词即可获取搜索指数、采购指数、买家画像、热门地区等数据。新用户120小时内免费使用。</p>
+        <a href="https://index.1688.com" target="_blank" class="link-btn">访问阿里指数 →</a>
+    </div>
+
+    <!-- 方案D -->
+    <div class="scheme-card" style="border-left-color:var(--warm-dark);">
+        <h4>D. 淘宝搜索页 - 快速采集书签</h4>
+        <div class="meta">门槛: 零门槛 | 一键提取 | 浏览器书签工具</div>
+        <p>在浏览器新建书签，将下面的代码粘贴为书签URL。在淘宝搜索页点击书签，自动提取当前页 Top 10 商品数据到剪贴板，粘贴到 Excel 模板上传即可。</p>
+        <div class="bookmark-code" style="position:relative;">
+            <button class="copy-btn" onclick="copyBookmark()">📋 复制代码</button>
+javascript:(function(){let items=[];document.querySelectorAll('.item.J_MouserOnverReq').forEach(function(el,i){if(i>=10)return;let title=el.querySelector('.title a')?.textContent?.trim()||'';let shop=el.querySelector('.shop a')?.textContent?.trim()||'';let price=el.querySelector('.price strong')?.textContent?.trim()||'';let sales=el.querySelector('.deal-cnt')?.textContent?.trim()||'';items.push(title+'\\t'+shop+'\\t'+price+'\\t'+sales)});if(items.length){navigator.clipboard.writeText(items.join('\\n')).then(function(){alert('已提取 '+items.length+' 条商品数据到剪贴板！\\n请粘贴到Excel模板中。')})}else{alert('未找到商品列表，请在淘宝搜索结果页使用。')}})();
+        </div>
+    </div>
+
+    <!-- 组合方案 -->
+    <div class="card" style="margin-top:20px;background:linear-gradient(135deg,#FFF0F3,#F9F3E3);">
+        <h3 style="color:var(--brand);">🎯 推荐组合方案：B + C + D</h3>
+        <p style="font-size:14px;color:var(--text);line-height:1.8;">
+            <strong>每周仅需约 90 分钟</strong>，数据完整度可达 90%+<br>
+            • 周一早上：打开生意参谋(B)查看行业排行 → 复制数据填入 Excel<br>
+            • 周一下午：打开阿里指数(C)查看搜索趋势 → 填入 Excel<br>
+            • 周二：在各平台搜索 + 书签工具(D)补充最新数据 → 上传 Excel 一键入库<br>
+            • 全程零成本、无需企业资质，仅需一个免费淘宝店铺
+        </p>
+        <div style="margin-top:12px;display:flex;gap:10px;">
+            <a href="https://s.taobao.com/search?q=喜糖&sort=sale-desc" target="_blank" class="btn">淘宝搜索喜糖</a>
+            <a href="https://s.taobao.com/search?q=伴手礼&sort=sale-desc" target="_blank" class="btn btn-outline">淘宝搜索伴手礼</a>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyBookmark() {
+    const code = document.querySelector('.bookmark-code').textContent.replace('📋 复制代码','').trim();
+    navigator.clipboard.writeText(code).then(function() {
+        const btn = document.querySelector('.copy-btn');
+        btn.textContent = '✅ 已复制';
+        setTimeout(() => btn.textContent = '📋 复制代码', 2000);
+    });
+}
+</script>
+{% endblock %}

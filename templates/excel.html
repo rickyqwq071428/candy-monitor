@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}数据导入{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>📥 数据导入</h2>
+    <div class="breadcrumb">数据管理 / Excel 导入</div>
+</div>
+
+<div class="content">
+    <!-- 步骤说明 -->
+    <div class="stats-row" style="margin-bottom:28px;">
+        <div class="stat-card" style="border-top-color:var(--brand);">
+            <div class="label">Step 1</div>
+            <div class="value" style="font-size:20px;">📥 下载模板</div>
+            <div class="extra">选择合适的 Excel 模板下载</div>
+        </div>
+        <div class="stat-card gold" style="border-top-color:var(--gold);">
+            <div class="label">Step 2</div>
+            <div class="value" style="font-size:20px;">✏️ 填写数据</div>
+            <div class="extra">按模板格式填入各行数据</div>
+        </div>
+        <div class="stat-card pink" style="border-top-color:var(--pink-dark);">
+            <div class="label">Step 3</div>
+            <div class="value" style="font-size:20px;">📤 上传导入</div>
+            <div class="extra">一键导入自动入库</div>
+        </div>
+    </div>
+
+    <!-- 模板下载 -->
+    <div class="card">
+        <h3>📋 Excel 模板下载</h3>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;">
+            <a href="/api/excel/template/rankings" class="btn" style="background:var(--brand);color:white;padding:12px 24px;text-decoration:none;border-radius:8px;font-size:15px;">
+                📊 销量排行模板
+            </a>
+            <a href="/api/excel/template/viral" class="btn" style="background:var(--gold);color:white;padding:12px 24px;text-decoration:none;border-radius:8px;font-size:15px;">
+                🔥 爆款内容模板
+            </a>
+            <a href="/api/excel/template/age" class="btn" style="background:var(--pink-dark);color:white;padding:12px 24px;text-decoration:none;border-radius:8px;font-size:15px;">
+                👥 年龄分布模板
+            </a>
+        </div>
+    </div>
+
+    <!-- 上传 -->
+    <div class="card" style="margin-top:20px;">
+        <h3>📤 上传导入</h3>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+            <select id="importType" style="padding:10px 16px;border:1px solid var(--border);border-radius:8px;font-size:14px;">
+                <option value="rankings">销量排行数据</option>
+                <option value="viral">爆款内容数据</option>
+                <option value="age">年龄分布数据</option>
+            </select>
+            <input type="file" id="excelFile" accept=".xlsx,.xls" style="padding:10px;border:1px solid var(--border);border-radius:8px;">
+            <button class="btn btn-primary" style="padding:10px 24px;" onclick="uploadExcel()">上传并导入</button>
+        </div>
+        <div id="uploadResult" style="margin-top:16px;padding:12px;border-radius:8px;display:none;"></div>
+    </div>
+</div>
+
+<script>
+async function uploadExcel() {
+    const file = document.getElementById('excelFile').files[0];
+    if (!file) { alert('请先选择文件'); return; }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', document.getElementById('importType').value);
+
+    const resultDiv = document.getElementById('uploadResult');
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '上传中...';
+
+    try {
+        const resp = await fetch('/api/excel/upload', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (data.success) {
+            resultDiv.innerHTML = '<div style="background:#E8F5E9;padding:16px;border-radius:8px;color:#2E7D32;">✅ ' + data.message + '</div>';
+        } else {
+            resultDiv.innerHTML = '<div style="background:#FFEBEE;padding:16px;border-radius:8px;color:#C62828;">❌ ' + data.error + '</div>';
+        }
+    } catch (e) {
+        resultDiv.innerHTML = '<div style="background:#FFEBEE;padding:16px;border-radius:8px;color:#C62828;">上传失败: ' + e.message + '</div>';
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}数据概览{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>📊 数据概览</h2>
+    <div class="breadcrumb">首页 / Dashboard</div>
+</div>
+
+<div class="content">
+    <!-- 新手引导横幅 -->
+    <div class="guide-banner">
+        <div class="text">
+            <h3>🎉 欢迎使用可予礼品竞品监控平台</h3>
+            <p>不知道从哪里开始？点击右侧按钮查看新手指南，5分钟上手。</p>
+        </div>
+        <a href="/guide" class="btn">📖 查看新手指南 →</a>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="label">📦 排行产品总数</div>
+            <div class="value">{{ stats.total_rankings }}</div>
+            <div class="extra">覆盖淘宝/抖音/小红书/大众点评</div>
+        </div>
+        <div class="stat-card gold">
+            <div class="label">🔥 爆款内容总数</div>
+            <div class="value">{{ stats.total_viral }}</div>
+            <div class="extra">总互动量 {{ (stats.total_likes + stats.total_comments)|int }} +</div>
+        </div>
+        <div class="stat-card pink">
+            <div class="label">🏪 跟踪商家</div>
+            <div class="value">{{ stats.total_merchants }}</div>
+            <div class="extra">跨4大平台持续监控</div>
+        </div>
+        <div class="stat-card blue">
+            <div class="label">💰 行业均价</div>
+            <div class="value">¥{{ stats.avg_price }}</div>
+            <div class="extra">排行产品平均价格</div>
+        </div>
+    </div>
+
+    <!-- 各平台数据分布 -->
+    {% if stats.platform_counts %}
+    <div class="stats-row" style="margin-bottom: 28px;">
+        {% for platform, count in stats.platform_counts.items() %}
+        <div class="stat-card warm" style="padding: 16px 20px;">
+            <div class="label">{{ platform }}</div>
+            <div class="value" style="font-size:24px;">{{ count }}</div>
+            <div class="extra">排行产品</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Top 10 排行 -->
+    <div class="card">
+        <h3>🏆 Top 10 排行产品 <a href="/rankings" style="font-size:13px;font-weight:400;color:var(--gold);float:right;text-decoration:none;">查看全部 →</a></h3>
+        {% if rankings %}
+        <table>
+            <thead><tr><th>排名</th><th>平台</th><th>商品名称</th><th>店铺</th><th>价格</th><th>销量</th><th>操作</th></tr></thead>
+            <tbody>
+                {% for r in rankings %}
+                <tr>
+                    <td>
+                        {% if r.rank <= 3 %}
+                        <span class="rank-badge top{{ r.rank }}">{{ r.rank }}</span>
+                        {% else %}
+                        <span class="rank-badge" style="font-size:12px;">{{ r.rank }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if '淘宝' in r.platform %}<span class="badge badge-taobao">淘宝</span>
+                        {% elif '抖音' in r.platform %}<span class="badge badge-douyin">抖音</span>
+                        {% elif '小红书' in r.platform %}<span class="badge badge-xhs">小红书</span>
+                        {% else %}<span class="badge badge-dianping">{{ r.platform }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ r.product_name[:30] }}</td>
+                    <td>{{ r.shop_name[:15] if r.shop_name else '-' }}</td>
+                    <td><span class="price-tag">¥{{ r.price }}</span></td>
+                    <td>{{ r.sales if r.sales else '-' }}</td>
+                    <td class="link-text">
+                        {% if r.product_link %}<a href="{{ r.product_link }}" target="_blank">查看 →</a>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state"><div class="icon">📦</div><p>暂无排行数据，请先 <a href="/guide">导入数据</a></p></div>
+        {% endif %}
+    </div>
+
+    <!-- 爆款内容预览 -->
+    <div class="card">
+        <h3>🔥 最新爆款内容 <a href="/viral" style="font-size:13px;font-weight:400;color:var(--gold);float:right;text-decoration:none;">查看全部 →</a></h3>
+        {% if viral %}
+        <div class="grid-3">
+            {% for v in viral %}
+            <div style="background:var(--bg);border-radius:var(--radius-sm);padding:16px;transition:all 0.2s;cursor:pointer;" onclick="{% if v.content_link %}window.open('{{ v.content_link }}','_blank'){% endif %}">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                    {% if '小红书' in v.platform %}
+                    <span class="badge badge-xhs">小红书</span>
+                    {% elif '抖音' in v.platform %}
+                    <span class="badge badge-douyin">抖音</span>
+                    {% else %}
+                    <span class="badge badge-dianping">{{ v.platform }}</span>
+                    {% endif %}
+                    <span style="font-size:12px;color:var(--text-muted);">{{ v.author[:12] if v.author else '未知' }}</span>
+                </div>
+                <div style="font-weight:500;font-size:14px;margin-bottom:8px;">{{ v.title[:40] }}{% if v.title|length > 40 %}...{% endif %}</div>
+                <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;line-height:1.5;">{{ (v.summary or '')[:60] }}</div>
+                <div style="display:flex;gap:14px;font-size:12px;color:var(--text-muted);">
+                    <span>❤️ {{ (v.likes or 0)|int }}</span>
+                    <span>💬 {{ (v.comments or 0)|int }}</span>
+                    <span>🔄 {{ (v.shares or 0)|int }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state"><div class="icon">🔥</div><p>暂无爆款内容数据</p></div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

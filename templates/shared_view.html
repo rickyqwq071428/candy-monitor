@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}共享数据{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>🔗 共享数据概览</h2>
+    <div class="breadcrumb">分享 / 数据概览</div>
+</div>
+
+<div class="content">
+    <div class="guide-banner">
+        <div class="text">
+            <h3>🎁 可予礼品有限公司 - 竞品数据分享</h3>
+            <p>权限级别：{{ permission }} · 数据仅供内部参考</p>
+        </div>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="label">📦 排行产品</div>
+            <div class="value">{{ stats.total_rankings }}</div>
+        </div>
+        <div class="stat-card gold">
+            <div class="label">🔥 爆款内容</div>
+            <div class="value">{{ stats.total_viral }}</div>
+        </div>
+        <div class="stat-card pink">
+            <div class="label">🏪 跟踪商家</div>
+            <div class="value">{{ stats.total_merchants }}</div>
+        </div>
+        <div class="stat-card blue">
+            <div class="label">💰 行业均价</div>
+            <div class="value">¥{{ stats.avg_price }}</div>
+        </div>
+    </div>
+
+    {% if rankings %}
+    <div class="card">
+        <h3>🏆 Top 10 排行产品</h3>
+        <table>
+            <thead><tr><th>排名</th><th>平台</th><th>商品名称</th><th>店铺</th><th>价格</th></tr></thead>
+            <tbody>
+                {% for r in rankings %}
+                <tr>
+                    <td>{% if r.rank <= 3 %}<span class="rank-badge top{{ r.rank }}">{{ r.rank }}</span>{% else %}<span class="rank-badge">{{ r.rank }}</span>{% endif %}</td>
+                    <td>
+                        {% if '淘宝' in r.platform %}<span class="badge badge-taobao">淘宝</span>
+                        {% elif '抖音' in r.platform %}<span class="badge badge-douyin">抖音</span>
+                        {% elif '小红书' in r.platform %}<span class="badge badge-xhs">小红书</span>
+                        {% else %}<span class="badge badge-dianping">{{ r.platform }}</span>{% endif %}
+                    </td>
+                    <td>{{ r.product_name[:30] }}</td>
+                    <td>{{ r.shop_name[:15] if r.shop_name else '-' }}</td>
+                    <td><span class="price-tag">¥{{ r.price }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if viral %}
+    <div class="card">
+        <h3>🔥 精选爆款内容</h3>
+        <div class="grid-3">
+            {% for v in viral %}
+            <div style="background:var(--bg);border-radius:var(--radius-sm);padding:16px;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                    {% if '小红书' in v.platform %}<span class="badge badge-xhs">小红书</span>
+                    {% elif '抖音' in v.platform %}<span class="badge badge-douyin">抖音</span>
+                    {% else %}<span class="badge badge-dianping">{{ v.platform }}</span>{% endif %}
+                    <span style="font-size:12px;color:var(--text-muted);">{{ v.author[:12] if v.author else '未知' }}</span>
+                </div>
+                <div style="font-weight:500;font-size:14px;margin-bottom:6px;">{{ v.title[:40] }}{% if v.title|length > 40 %}...{% endif %}</div>
+                <div style="display:flex;gap:12px;font-size:12px;color:var(--text-muted);">
+                    <span>❤️ {{ (v.likes or 0)|int }}</span>
+                    <span>💬 {{ (v.comments or 0)|int }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

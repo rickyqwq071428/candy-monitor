@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}消费者画像{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>👥 消费者画像</h2>
+    <div class="breadcrumb">数据分析 / 消费者年龄分布</div>
+</div>
+
+<div class="content">
+    {% if age_data %}
+    <div class="card">
+        <h3>📊 喜糖/伴手礼消费者年龄分布</h3>
+        <div style="overflow-x:auto;">
+            <table>
+                <thead>
+                    <tr><th>数据来源</th><th>年龄段</th><th>占比</th><th>性别</th><th>样本量</th><th>平台</th><th>可视化</th></tr>
+                </thead>
+                <tbody>
+                    {% for a in age_data %}
+                    <tr>
+                        <td><strong>{{ a.source }}</strong>{% if a.source_detail %}<br><small style="color:var(--text-muted);">{{ a.source_detail }}</small>{% endif %}</td>
+                        <td>{{ a.age_group }}</td>
+                        <td><span class="price-tag">{{ a.percentage }}%</span></td>
+                        <td>{{ a.gender or '-' }}</td>
+                        <td>{{ a.sample_size if a.sample_size else '-' }}</td>
+                        <td>{{ a.platform or '-' }}</td>
+                        <td>
+                            <div style="background:#f0ece8;border-radius:20px;height:10px;width:150px;overflow:hidden;">
+                                <div style="background:var(--brand);height:100%;width:{{ a.percentage }}%;border-radius:20px;"></div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 关键洞察 -->
+    <div class="stats-row" style="margin-top:20px;">
+        <div class="stat-card">
+            <div class="label">👩 核心消费群体</div>
+            <div class="value" style="font-size:24px;">26-35岁女性</div>
+            <div class="extra">占整体消费的58%</div>
+        </div>
+        <div class="stat-card gold">
+            <div class="label">💰 最受欢迎价格带</div>
+            <div class="value" style="font-size:24px;">20-30元</div>
+            <div class="extra">消费者接受度35%</div>
+        </div>
+        <div class="stat-card pink">
+            <div class="label">📈 高价品贡献</div>
+            <div class="value" style="font-size:24px;">48.7%</div>
+            <div class="extra">抖音7.1%高价品贡献近半销售额</div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="empty-state">
+            <div class="icon">👥</div>
+            <p>暂无消费者画像数据</p>
+            <p style="font-size:13px;margin-top:8px;">请通过 <a href="/excel">数据导入</a> 上传年龄分布数据</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

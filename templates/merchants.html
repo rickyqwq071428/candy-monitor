@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}跟踪商家{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>🏪 跟踪商家</h2>
+    <div class="breadcrumb">数据管理 / 跟踪商家</div>
+</div>
+
+<div class="content">
+    <div class="card">
+        <div class="tabs">
+            <button class="tab {% if not current_platform %}active{% endif %}" onclick="filterPlatform('')">全部</button>
+            {% for p in platforms %}
+            <button class="tab {% if current_platform == p %}active{% endif %}" onclick="filterPlatform('{{ p }}')">{{ p }}</button>
+            {% endfor %}
+        </div>
+
+        {% if merchants %}
+        <table>
+            <thead><tr><th>平台</th><th>商家名称</th><th>类型</th><th>粉丝/关注</th><th>商品数</th><th>均价</th><th>备注</th></tr></thead>
+            <tbody>
+                {% for m in merchants %}
+                <tr>
+                    <td>
+                        {% if '淘宝' in m.platform %}<span class="badge badge-taobao">淘宝</span>
+                        {% elif '抖音' in m.platform %}<span class="badge badge-douyin">抖音</span>
+                        {% elif '小红书' in m.platform %}<span class="badge badge-xhs">小红书</span>
+                        {% else %}<span class="badge badge-dianping">{{ m.platform }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="link-text">
+                        {% if m.shop_link %}<a href="{{ m.shop_link }}" target="_blank">{{ m.name }}</a>
+                        {% else %}{{ m.name }}{% endif %}
+                    </td>
+                    <td>{{ m.shop_type or '-' }}</td>
+                    <td>{{ m.followers or '-' }}</td>
+                    <td>{{ m.product_count if m.product_count else '-' }}</td>
+                    <td>{% if m.avg_price %}<span class="price-tag">¥{{ m.avg_price }}</span>{% else %}-{% endif %}</td>
+                    <td style="font-size:12px;color:var(--text-muted);">{{ m.notes or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state"><div class="icon">🏪</div><p>暂无跟踪商家数据</p></div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function filterPlatform(platform) {
+    let url = '/merchants';
+    if (platform) url += '?platform=' + encodeURIComponent(platform);
+    window.location.href = url;
+}
+</script>
+{% endblock %}
