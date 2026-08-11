@@ -21,6 +21,7 @@ from database import (
 from taobao import collector
 from ai_services import (
     call_ai, generate_image, generate_xiaohongshu, generate_douyin,
+    MODEL_CONFIGS, generate_video, check_video_status,
     get_available_models, MODEL_CONFIGS, FALLBACK_ORDER
 )
 
@@ -430,6 +431,28 @@ def api_generate_image():
         })
 
     return jsonify({'success': False, 'error': result.get('error', '生成失败')}), 500
+
+
+@app.route('/api/generate_video', methods=['POST'])
+def api_generate_video():
+    """AI 视频生成 — 智谱 CogVideoX API（有免费额度）"""
+    data = request.json or {}
+    prompt = data.get('prompt', '')
+    duration = data.get('duration', '5秒')
+    style = data.get('style', '写实')
+
+    if not prompt:
+        return jsonify({'success': False, 'error': '请输入视频描述'}), 400
+
+    result = generate_video(prompt, duration, style)
+    return jsonify(result)
+
+
+@app.route('/api/video_status/<task_id>')
+def api_video_status(task_id):
+    """查询视频生成进度"""
+    result = check_video_status(task_id)
+    return jsonify(result)
 
 
 @app.route('/api/generate_xhs_copy', methods=['POST'])

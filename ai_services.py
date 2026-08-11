@@ -196,17 +196,18 @@ def generate_image(prompt, style='写实', size='1024x1024'):
     """
     图片生成，引擎降级链：
     Stability AI → Pollinations (免费) → Cloudflare
+    返回 base64 数据，避免浏览器跨域问题
     """
     style_prefix = STYLE_PROMPTS.get(style, STYLE_PROMPTS['写实'])
     full_prompt = f"{prompt}, {style_prefix}"
 
     w, h = size.split('x')
+    import httpx
 
     # 方案1: Stability AI
     api_key = os.environ.get('STABILITY_API_KEY')
     if api_key:
         try:
-            import httpx
             resp = httpx.post(
                 'https://api.stability.ai/v2beta/stable-image/generate/core',
                 headers={'Authorization': f'Bearer {api_key}', 'Accept': 'application/json'},
@@ -221,16 +222,142 @@ def generate_image(prompt, style='写实', size='1024x1024'):
         except Exception as e:
             logger.warning(f"Stability AI 失败: {e}")
 
-    # 方案2: Pollinations.ai (免费，不限量)
+    # 方案2: Pollinations.ai (免费，不限量) — 后端代理下载避免跨域
     try:
         import urllib.parse
         encoded = urllib.parse.quote(full_prompt)
         url = f"https://image.pollinations.ai/prompt/{encoded}?width={w}&height={h}&nologo=true&seed={random.randint(1, 99999)}"
-        return {'success': True, 'image_url': url, 'engine': 'Pollinations.ai (免费)'}
+        resp = httpx.get(url, timeout=120, follow_redirects=True)
+        if resp.status_code == 200:
+            import base64 as b64
+            content_type = resp.headers.get('content-type', 'image/jpeg')
+            b64_data = b64.b64encode(resp.content).decode()
+            return {
+                'success': True,
+                'image_url': f"data:{content_type};base64,{b64_data}",
+                'engine': 'Pollinations.ai (免费)',
+            }
+        logger.warning(f"Pollinations 返回 {resp.status_code}")
     except Exception as e:
         logger.warning(f"Pollinations 失败: {e}")
 
-    return {'success': False, 'error': '所有图片引擎均不可用'}
+    # 方案3: 免费图片占位（所有引擎都挂了）
+    try:
+        placeholder_url = f"https://placehold.co/{w}x{h}/EEE/999?text={urllib.parse.quote(prompt[:30])}"
+        resp = httpx.get(placeholder_url, timeout=30)
+        if resp.status_code == 200:
+            import base64 as b64
+            b64_data = b64.b64encode(resp.content).decode()
+            return {
+                'success': True,
+                'image_url': f"data:image/png;base64,{b64_data}",
+                'engine': '占位图（所有引擎不可用）',
+            }
+    except:
+        pass
+
+    return {'success': False, 'error': '所有图片引擎均不可用，请稍后重试'}
+
+
+# =============================================================================
+# 视频生成 — 智谱 CogVideoX API (免费额度)
+# =============================================================================
+
+# 视频任务存储（内存中，重启清空）
+_video_tasks = {}
+
+def generate_video(prompt, duration='5秒', style='写实'):
+    """
+    视频生成，引擎降级链：
+    智谱 CogVideoX → 占位提示
+    返回 task_id 用于轮询
+    """
+    import uuid
+    import httpx
+
+    task_id = str(uuid.uuid4())[:12]
+    api_key = os.environ.get('ZHIPU_API_KEY')
+
+    if api_key:
+        try:
+            # 智谱 CogVideoX API
+            resp = httpx.post(
+                'https://open.bigmodel.cn/api/paas/v4/video/generations',
+                headers={
+                    'Authorization': f'Bearer {api_key}',
+                    'Content-Type': 'application/json',
+                },
+                json={
+                    'model': 'cogvideox',
+                    'prompt': f'{prompt}, {style} style, cinematic quality',
+                },
+                timeout=30,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                zhipu_task_id = data.get('id', '')
+                _video_tasks[task_id] = {
+                    'status': 'processing',
+                    'zhipu_task_id': zhipu_task_id,
+                    'engine': '智谱 CogVideoX',
+                    'prompt': prompt,
+                }
+                return {'success': True, 'task_id': task_id, 'status': 'processing'}
+            logger.warning(f"智谱视频API返回 {resp.status_code}: {resp.text[:200]}")
+        except Exception as e:
+            logger.warning(f"智谱视频API失败: {e}")
+
+    # 降级：返回提示信息
+    _video_tasks[task_id] = {
+        'status': 'failed',
+        'error': '视频引擎未配置。请在 Railway Variables 中添加 ZHIPU_API_KEY（智谱开放平台免费申请）',
+        'engine': '无可用引擎',
+    }
+    return {'success': False, 'task_id': task_id, 'error': '请配置 ZHIPU_API_KEY 环境变量'}
+
+
+def check_video_status(task_id):
+    """查询视频生成状态"""
+    task = _video_tasks.get(task_id)
+    if not task:
+        return {'status': 'not_found', 'error': '任务不存在或已过期'}
+
+    if task['status'] == 'completed':
+        return {'status': 'completed', 'video_url': task.get('video_url'), 'engine': task.get('engine')}
+    if task['status'] == 'failed':
+        return {'status': 'failed', 'error': task.get('error', '生成失败')}
+
+    # 检查智谱任务状态
+    zhipu_task_id = task.get('zhipu_task_id')
+    api_key = os.environ.get('ZHIPU_API_KEY')
+
+    if zhipu_task_id and api_key:
+        try:
+            import httpx
+            resp = httpx.get(
+                f'https://open.bigmodel.cn/api/paas/v4/async-result/{zhipu_task_id}',
+                headers={'Authorization': f'Bearer {api_key}'},
+                timeout=15,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                task_status = data.get('task_status', '')
+
+                if task_status == 'SUCCESS':
+                    video_url = data.get('video_result', [{}])[0].get('url', '')
+                    _video_tasks[task_id]['status'] = 'completed'
+                    _video_tasks[task_id]['video_url'] = video_url
+                    return {'status': 'completed', 'video_url': video_url, 'engine': '智谱 CogVideoX'}
+
+                elif task_status == 'FAIL':
+                    _video_tasks[task_id]['status'] = 'failed'
+                    _video_tasks[task_id]['error'] = '视频生成失败，请尝试修改提示词'
+                    return {'status': 'failed', 'error': '视频生成失败'}
+
+        except Exception as e:
+            logger.warning(f"查询视频状态失败: {e}")
+
+    return {'status': 'processing', 'message': '正在生成视频，请耐心等待...'}
 
 
 # =============================================================================
