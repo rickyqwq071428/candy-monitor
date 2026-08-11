@@ -377,11 +377,17 @@
                 <div class="form-group">
                     <label>🧠 生成模型</label>
                     <select id="xhs-model">
-                        <option value="deepseek" selected>DeepSeek V3.1 (推荐)</option>
-                        <option value="kimi">Kimi 128K上下文</option>
-                        <option value="qwen">通义千问 Qwen3</option>
-                        <option value="doubao">豆包 Pro 低成本</option>
+                        <option value="deepseek" selected>🔵 DeepSeek V3.1 (推荐)</option>
+                        <option value="doubao">🟣 豆包 Pro 低成本</option>
+                        <option value="qwen">🔷 通义千问 Qwen3</option>
+                        <option value="kimi">🟢 Kimi 128K上下文</option>
+                        <option value="gemini">🟡 Gemini 2.0 Flash 免费</option>
+                        <option value="openai">🟩 GPT-4o-mini</option>
+                        <option value="yi">💗 Yi-Large</option>
                     </select>
+                    <small style="font-size:11px;color:var(--text-muted);margin-top:4px;display:block;">
+                        ⚡ 无 API Key 时自动回退模板 · 配置后可调用真实 AI
+                    </small>
                 </div>
             </div>
             <button class="btn btn-primary" style="padding:12px 28px;font-size:14px;" onclick="generateXhs()" id="xhs-btn">
@@ -424,11 +430,17 @@
                 <div class="form-group">
                     <label>🧠 生成模型</label>
                     <select id="dy-model">
-                        <option value="deepseek" selected>DeepSeek V3.1 (推荐)</option>
-                        <option value="kimi">Kimi 128K上下文</option>
-                        <option value="qwen">通义千问 Qwen3</option>
-                        <option value="doubao">豆包 Pro 低成本</option>
+                        <option value="deepseek" selected>🔵 DeepSeek V3.1 (推荐)</option>
+                        <option value="doubao">🟣 豆包 Pro 低成本</option>
+                        <option value="qwen">🔷 通义千问 Qwen3</option>
+                        <option value="kimi">🟢 Kimi 128K上下文</option>
+                        <option value="gemini">🟡 Gemini 2.0 Flash 免费</option>
+                        <option value="openai">🟩 GPT-4o-mini</option>
+                        <option value="yi">💗 Yi-Large</option>
                     </select>
+                    <small style="font-size:11px;color:var(--text-muted);margin-top:4px;display:block;">
+                        ⚡ 无 API Key 时自动回退模板 · 配置后可调用真实 AI
+                    </small>
                 </div>
             </div>
             <button class="btn btn-primary" style="padding:12px 28px;font-size:14px;" onclick="generateDy()" id="dy-btn">
@@ -513,16 +525,27 @@ async function loadModels() {
     if (!modelData) return;
 
     const grid = document.getElementById('modelGrid');
-    const colors = {deepseek:'deepseek', kimi:'kimi', ollama:'ollama', doubao:'doubao', qwen:'qwen'};
-    const icons = {deepseek:'🔵', kimi:'🟢', ollama:'🟠', doubao:'🟣', qwen:'🔷'};
+    const icons = {deepseek:'🔵', kimi:'🟢', ollama:'🟠', doubao:'🟣', qwen:'🔷', gemini:'🟡', openai:'🟩', yi:'💗'};
+
+    // 使用 available 数组显示配置状态
+    const available = modelData.available || [];
+    const configured = {};
+    available.forEach(m => { configured[m.id] = m.configured; });
 
     for (const [key, m] of Object.entries(modelData.llm)) {
         const isLocal = key === 'ollama';
+        const isConfigured = configured[key] === true;
+        const statusBadge = isLocal
+            ? '<div class="model-badge local">🖥️ 本地</div>'
+            : (isConfigured
+                ? '<div class="model-badge" style="background:#E8F5E9;color:#43A047;">✅ 已配置</div>'
+                : '<div class="model-badge" style="background:#FFF3E0;color:#E65100;">⚡ 需配置</div>');
+
         grid.innerHTML += `
-        <div class="model-card ${isLocal ? '' : ''}" onclick="selectModel('${key}')" id="model-${key}">
-            ${isLocal ? '<div class="model-badge local">🖥️ 本地</div>' : '<div class="model-badge">☁️ 云端</div>'}
+        <div class="model-card" onclick="selectModel('${key}')" id="model-${key}">
+            ${statusBadge}
             <div class="model-header">
-                <div class="model-icon ${colors[key]||'deepseek'}">${icons[key]||'🤖'}</div>
+                <div class="model-icon ${key}">${icons[key]||'🤖'}</div>
                 <div>
                     <div class="model-name">${m.name}</div>
                     <div class="model-provider">${m.provider}</div>
@@ -660,7 +683,7 @@ function generateImageWithText() {
 // ==================== Copy Gen ====================
 async function generateXhs() {
     const btn = document.getElementById('xhs-btn');
-    btn.innerHTML = '<span class="loading-spinner"></span> 生成中...';
+    btn.innerHTML = '<span class="loading-spinner"></span> AI 创作中...';
     btn.disabled = true;
 
     try {
@@ -676,19 +699,23 @@ async function generateXhs() {
         const data = await resp.json();
         const result = document.getElementById('xhs-result');
         result.classList.add('show');
-        document.getElementById('xhs-output').innerHTML =
-            '<span style="color:var(--text-muted);font-size:11px;">🧠 模型：' + data.model_used + '</span><br><br>' +
-            '<strong style="font-size:16px;color:var(--brand);">📌 ' + data.title + '</strong><br><br>' +
-            '<strong>📝 正文</strong><br>' + data.body.replace(/\n/g,'<br>') + '<br><br>' +
-            '<strong style="color:#5B7FBD;">🏷️ 标签</strong><br>' + data.tags;
-    } catch(e) { alert('生成失败: ' + e.message); }
+        if (data.success) {
+            const tokensInfo = data.tokens ? ` | 📊 ${data.tokens.total} tokens` : '';
+            document.getElementById('xhs-output').innerHTML =
+                '<span style="color:var(--text-muted);font-size:11px;">🤖 模型：' + data.model_used + tokensInfo + '</span><br><br>' +
+                data.full.replace(/\n/g, '<br>');
+        } else {
+            document.getElementById('xhs-output').innerHTML =
+                '<span style="color:var(--error);">❌ ' + (data.error || '生成失败') + '</span>';
+        }
+    } catch(e) { document.getElementById('xhs-output').innerHTML = '<span style="color:var(--error);">❌ ' + e.message + '</span>'; }
     btn.innerHTML = '✍️ 生成文案';
     btn.disabled = false;
 }
 
 async function generateDy() {
     const btn = document.getElementById('dy-btn');
-    btn.innerHTML = '<span class="loading-spinner"></span> 生成中...';
+    btn.innerHTML = '<span class="loading-spinner"></span> AI 创作中...';
     btn.disabled = true;
 
     try {
@@ -704,12 +731,16 @@ async function generateDy() {
         const data = await resp.json();
         const result = document.getElementById('dy-result');
         result.classList.add('show');
-        document.getElementById('dy-output').innerHTML =
-            '<span style="color:var(--text-muted);font-size:11px;">🧠 模型：' + data.model_used + '</span><br><br>' +
-            '<strong style="color:#E06A20;">🎣 钩子</strong><br>' + data.hook + '<br><br>' +
-            '<strong>📜 脚本</strong><br>' + data.script.replace(/\n/g,'<br>') + '<br><br>' +
-            '<strong>🏷️ 标签</strong><br>' + data.tags;
-    } catch(e) { alert('生成失败: ' + e.message); }
+        if (data.success) {
+            const tokensInfo = data.tokens ? ` | 📊 ${data.tokens.total} tokens` : '';
+            document.getElementById('dy-output').innerHTML =
+                '<span style="color:var(--text-muted);font-size:11px;">🤖 模型：' + data.model_used + tokensInfo + '</span><br><br>' +
+                data.full.replace(/\n/g, '<br>');
+        } else {
+            document.getElementById('dy-output').innerHTML =
+                '<span style="color:var(--error);">❌ ' + (data.error || '生成失败') + '</span>';
+        }
+    } catch(e) { document.getElementById('dy-output').innerHTML = '<span style="color:var(--error);">❌ ' + e.message + '</span>'; }
     btn.innerHTML = '🎬 生成脚本';
     btn.disabled = false;
 }

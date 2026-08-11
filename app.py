@@ -19,6 +19,10 @@ from database import (
     get_dashboard_stats, get_trends_data
 )
 from taobao import collector
+from ai_services import (
+    call_ai, generate_image, generate_xiaohongshu, generate_douyin,
+    get_available_models, MODEL_CONFIGS, FALLBACK_ORDER
+)
 
 app = Flask(__name__)
 app.config['BRAND_NAME'] = '可予礼品有限公司'
@@ -289,60 +293,53 @@ def api_excel_template(template_type):
 # LLM 模型配置
 LLM_MODELS = {
     'deepseek': {
-        'name': 'DeepSeek V3.1',
-        'provider': '深度求索',
-        'price_input': '2元/百万token',
-        'price_output': '8元/百万token',
-        'free_quota': '注册送额度',
-        'strength': '综合性价比最高，OpenAI兼容API',
-        'context': '64K',
-        'base_url': 'https://api.deepseek.com/v1',
-        'endpoint_suffix': '/chat/completions'
-    },
-    'kimi': {
-        'name': 'Kimi (Moonshot)',
-        'provider': '月之暗面',
-        'price_input': '2元/百万token',
-        'price_output': '8元/百万token',
-        'free_quota': '注册送额度',
-        'strength': '128K超长上下文',
-        'context': '128K',
-        'base_url': 'https://api.moonshot.cn/v1',
-        'endpoint_suffix': '/chat/completions'
-    },
-    'ollama': {
-        'name': 'Ollama 本地 (Qwen3 8B)',
-        'provider': '本地部署',
-        'price_input': '免费（本地GPU）',
-        'price_output': '免费',
-        'free_quota': '无限制',
-        'strength': '数据私有、零边际成本',
-        'context': '32K',
-        'base_url': 'http://localhost:11434/v1',
-        'endpoint_suffix': '/chat/completions'
+        'name': 'DeepSeek V3.1', 'provider': '深度求索',
+        'price_input': '2元/百万token', 'price_output': '8元/百万token',
+        'free_quota': '注册送500万token', 'strength': '综合性价比最高',
+        'context': '64K', 'base_url': 'https://api.deepseek.com/v1', 'emoji': '🔵',
     },
     'doubao': {
-        'name': '豆包 Pro',
-        'provider': '字节跳动',
-        'price_input': '0.8元/百万token',
-        'price_output': '2元/百万token',
-        'free_quota': '免费额度充足',
-        'strength': '价格最低，均衡之选',
-        'context': '32K',
-        'base_url': 'https://ark.cn-beijing.volces.com/api/v3',
-        'endpoint_suffix': '/chat/completions'
+        'name': '豆包 Pro', 'provider': '字节跳动',
+        'price_input': '0.8元/百万token', 'price_output': '2元/百万token',
+        'free_quota': '免费额度充足', 'strength': '价格最低，均衡之选',
+        'context': '32K', 'base_url': 'https://ark.cn-beijing.volces.com/api/v3', 'emoji': '🟣',
     },
     'qwen': {
-        'name': '通义千问 Qwen3-Plus',
-        'provider': '阿里云',
-        'price_input': '2元/百万token',
-        'price_output': '4元/百万token',
-        'free_quota': '百万token免费',
-        'strength': '能力均衡，开源生态好',
-        'context': '128K',
-        'base_url': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-        'endpoint_suffix': '/chat/completions'
-    }
+        'name': '通义千问 Qwen3-Plus', 'provider': '阿里云',
+        'price_input': '2元/百万token', 'price_output': '4元/百万token',
+        'free_quota': '百万token免费', 'strength': '中文理解能力强',
+        'context': '128K', 'base_url': 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'emoji': '🔷',
+    },
+    'kimi': {
+        'name': 'Kimi (Moonshot)', 'provider': '月之暗面',
+        'price_input': '2元/百万token', 'price_output': '8元/百万token',
+        'free_quota': '128K超长上下文', 'strength': '超长上下文处理',
+        'context': '128K', 'base_url': 'https://api.moonshot.cn/v1', 'emoji': '🟢',
+    },
+    'gemini': {
+        'name': 'Gemini 2.0 Flash', 'provider': 'Google',
+        'price_input': '免费', 'price_output': '免费',
+        'free_quota': '1500次/天', 'strength': '多模态能力强',
+        'context': '128K', 'base_url': 'https://generativelanguage.googleapis.com/v1beta/openai', 'emoji': '🟡',
+    },
+    'openai': {
+        'name': 'GPT-4o-mini', 'provider': 'OpenAI',
+        'price_input': '0.15美元/百万token', 'price_output': '0.6美元/百万token',
+        'free_quota': '注册送$5', 'strength': '最通用的高质量模型',
+        'context': '128K', 'base_url': 'https://api.openai.com/v1', 'emoji': '🟩',
+    },
+    'yi': {
+        'name': 'Yi-Large', 'provider': '零一万物',
+        'price_input': '1元/百万token', 'price_output': '1元/百万token',
+        'free_quota': '免费额度', 'strength': '中文写作优秀',
+        'context': '32K', 'base_url': 'https://api.lingyiwanwu.com/v1', 'emoji': '💗',
+    },
+    'ollama': {
+        'name': 'Ollama 本地 (Qwen3 8B)', 'provider': '本地部署',
+        'price_input': '免费（本地GPU）', 'price_output': '免费',
+        'free_quota': '无限制', 'strength': '数据私有、零边际成本',
+        'context': '32K', 'base_url': 'http://localhost:11434/v1', 'emoji': '🟠',
+    },
 }
 
 IMAGE_MODELS = {
@@ -387,10 +384,12 @@ HARDWARE_CONFIGS = [
 
 @app.route('/api/ai/models')
 def api_ai_models():
-    """获取所有 AI 模型配置信息"""
+    """获取所有 AI 模型配置信息（含真实 API 配置状态）"""
+    available = get_available_models()
     return jsonify({
         'success': True,
         'llm': LLM_MODELS,
+        'available': available,  # 含是否已配置 API Key 的标记
         'image': IMAGE_MODELS,
         'video': VIDEO_MODELS,
         'cloud_video': CLOUD_VIDEO,
@@ -400,181 +399,69 @@ def api_ai_models():
 
 @app.route('/api/generate_image', methods=['POST'])
 def api_generate_image():
-    """AI 图片生成 - 支持 Pollinations.ai 和 ComfyUI 本地"""
+    """AI 图片生成 - Pollinations.ai 免费 + 可选 Stability AI"""
     data = request.json or {}
     prompt = data.get('prompt', '')
     style = data.get('style', '摄影写实')
     size = data.get('size', '1024x1024')
     engine = data.get('engine', 'pollinations')
 
-    style_prompts = {
-        '摄影写实': 'professional product photography, wedding candy gift box, elegant, soft lighting, 8k detailed, commercial photography',
-        '可爱插画': 'cute illustration, kawaii style, wedding favors, pastel colors, hand-drawn, charming, watercolor',
-        '高级质感': 'luxury wedding gift packaging, premium, sophisticated, gold accents, minimal, magazine editorial quality',
-        '国风中式': 'traditional Chinese wedding candy box, red and gold, paper-cut art style, cultural elegance, silk texture',
-        '极简留白': 'minimalist wedding favor design, clean, white space, modern, elegant simplicity, studio lighting',
-        '梦幻浪漫': 'romantic wedding candy, dreamy, soft pink, flower petals, fairy lights, ethereal, bokeh',
-        '电商白底': 'e-commerce product photography, wedding candy box on white background, clean, professional, studio lighting'
+    # 风格映射
+    style_map = {
+        '摄影写实': '写实',
+        '可爱插画': '插画',
+        '国风中式': '国风',
+        '高级质感': 'ins风',
+        '电商白底': '产品图',
+        '极简留白': 'ins风',
+        '梦幻浪漫': 'ins风',
     }
+    mapped_style = style_map.get(style, '写实')
 
-    full_prompt = f"{prompt}, {style_prompts.get(style, style_prompts['摄影写实'])}"
+    result = generate_image(prompt, mapped_style, size)
 
-    if engine == 'pollinations':
-        image_url = f"https://image.pollinations.ai/prompt/{full_prompt}?width={size.split('x')[0]}&height={size.split('x')[1]}&nologo=true&seed={random.randint(1,99999)}"
-    else:
-        # ComfyUI fallback to Pollinations
-        image_url = f"https://image.pollinations.ai/prompt/{full_prompt}?width={size.split('x')[0]}&height={size.split('x')[1]}&nologo=true"
+    if result.get('success'):
+        return jsonify({
+            'success': True,
+            'image_url': result['image_url'],
+            'prompt': prompt,
+            'style': style,
+            'engine': result.get('engine', 'Pollinations.ai'),
+        })
 
-    return jsonify({
-        'success': True,
-        'image_url': image_url,
-        'prompt': full_prompt,
-        'style': style,
-        'engine': engine
-    })
+    return jsonify({'success': False, 'error': result.get('error', '生成失败')}), 500
 
 
 @app.route('/api/generate_xhs_copy', methods=['POST'])
 def api_generate_xhs_copy():
-    """小红书爆款文案生成 - 增强版（Dify工作流模拟）"""
+    """小红书爆款文案生成（真 AI 调用 + 模板回退）"""
     data = request.json or {}
     product = data.get('product', '喜糖礼盒')
     style = data.get('style', '种草')
     word_count = data.get('word_count', 'medium')
     model = data.get('model', 'deepseek')
 
-    model_info = LLM_MODELS.get(model, LLM_MODELS['deepseek'])
+    result = generate_xiaohongshu(product, style, word_count, model)
 
-    # 根据风格生成不同结构的标题
-    title_map = {
-        '种草': [
-            f'备婚必看！{product}这样选，宾客都夸爆了',
-            f'闺蜜结婚选了这款{product}，直接被种草了',
-            f'颜值担当！这款{product}让婚礼高级感拉满',
-        ],
-        '测评': [
-            f'花了3000元实测12款{product}，结果出乎意料',
-            f'{product}开箱实测：哪些值得买？哪些要避坑？',
-            f'真实测评｜{product}到底好不好？看完再决定',
-        ],
-        '攻略': [
-            f'备婚干货｜{product}避雷指南，建议收藏',
-            f'千万别踩坑！{product}选购攻略，省钱又高级',
-            f'婚庆圈都在找的{product}选购秘籍，一次说清楚',
-        ],
-        '分享': [
-            f'我的{product}备婚日记，宾客都说好',
-            f'被问爆的{product}链接，今天终于整理好了',
-            f'晒晒我选的{product}，婆婆看了连连称赞',
-        ],
-        '探店': [
-            f'探访线下{product}实体店，发现了宝藏',
-            f'跑遍5家{product}店，终于找到心仪的',
-            f'实体店vs网购{product}，差别太大了',
-        ]
-    }
-
-    titles = title_map.get(style, title_map['种草'])
-
-    # 根据风格生成正文
-    body_map = {
-        '种草': f'最近在备婚，看了很多{product}\n\n分享几点选购心得：\n1⃣ 先确定预算范围\n2⃣ 看包装质感，要能体现婚礼主题\n3⃣ 糖果口味要兼顾大人和小朋友\n4⃣ 一定要提前确认发货时间\n\n最后选了这家，宾客反馈超好！\n\n推荐给所有备婚的姐妹～',
-        '测评': f'最近实测了市面上热门的{product}\n\n从这几个维度打分（满分10分）：\n✅ 包装颜值：9分\n✅ 糖果品质：8.5分\n✅ 性价比：9分\n✅ 发货速度：8分\n✅ 客服服务：9.5分\n\n综合推荐指数：⭐⭐⭐⭐⭐',
-        '攻略': f'备婚三个月，{product}看了不下50家\n\n给姐妹们总结一下避坑指南：\n1. 不要只看主图，一定要看买家秀\n2. 问清楚糖果的克重和保质期\n3. 定制款要提前1个月下单\n4. 可以要求先寄样品，确认后再批量下单\n\n收藏这篇，少走弯路！',
-        '分享': f'我的{product}终于定下来了！\n\n一开始真的很纠结，款式太多了\n后来按照几个原则筛选：\n• 和婚礼主题色搭配\n• 预算控制在30元以内\n• 包装要环保可降解\n\n最终选了这款中国风，和我们的中式婚礼太配了！\n\n希望每个新娘都能选到心仪的{product}～',
-        '探店': f'周末跑了好几家{product}实体店\n\n实体店的好处是可以直接看到实物：\n✨ 包装质感一目了然\n✨ 可以试吃糖果\n✨ 店员会根据预算搭配方案\n✨ 定制沟通更顺畅\n\n我最后选了XXX店，推荐给上海的姐妹！'
-    }
-
-    body = body_map.get(style, body_map['种草'])
-
-    if word_count == 'short':
-        body = f'分享一款超好看的{product}\n\n颜值高、性价比好，宾客都说赞！\n\n真的闭眼入～'
-    elif word_count == 'long':
-        body = body + '\n\n补充几点小Tips：\n• 记得提前和酒店确认是否允许自带喜糖\n• 多买10%左右的备用份\n• 摆拍的时候可以搭配花束，超好看'
-
-    tags_pool = ['#备婚', '#备婚日记', '#备婚攻略', '#喜糖', '#伴手礼',
-                 '#婚礼筹备', '#婚礼好物', '#结婚', '#备婚清单', '#喜糖推荐',
-                 '#伴手礼推荐', '#婚礼', '#新娘', '#婚品', '#备婚日常',
-                 '#喜糖礼盒', '#婚礼伴手礼', '#备婚好物', '#婚庆']
-
-    tags = ' '.join(random.sample(tags_pool, min(6, len(tags_pool))))
-
-    return jsonify({
-        'success': True,
-        'title': random.choice(titles),
-        'body': body,
-        'tags': tags,
-        'full': f'{random.choice(titles)}\n\n{body}\n\n{tags}',
-        'model_used': model_info['name']
-    })
+    if result['success']:
+        return jsonify(result)
+    return jsonify({'success': False, 'error': result.get('full', '生成失败')}), 500
 
 
 @app.route('/api/generate_dy_copy', methods=['POST'])
 def api_generate_dy_copy():
-    """抖音爆款脚本生成 - 增强版"""
+    """抖音爆款脚本生成（真 AI 调用 + 模板回退）"""
     data = request.json or {}
     product = data.get('product', '喜糖礼盒')
     content_type = data.get('type', '展示')
     duration = data.get('duration', 'medium')
     model = data.get('model', 'deepseek')
 
-    model_info = LLM_MODELS.get(model, LLM_MODELS['deepseek'])
+    result = generate_douyin(product, content_type, duration, model)
 
-    hook_map = {
-        '口播': [
-            f'备婚的姐妹听我一句劝，{product}千万别乱买！',
-            f'今天说一个备婚圈不敢说的{product}真相',
-            f'90%的新娘选{product}都踩了这个坑',
-        ],
-        '展示': [
-            f'你敢信？这个{product}让婚礼预算省了一半！',
-            f'备婚3个月，终于找到天花板级别的{product}',
-            f'花了几百块买到高级感{product}，怎么做到的？',
-        ],
-        '剧情': [
-            f'当我把这个{product}拿给婆婆看...',
-            f'男朋友是个直男，选的{product}居然...',
-            f'闺蜜结婚用了这个{product}，我被惊艳到了',
-        ],
-        '痛点': [
-            f'别再买又贵又土的{product}了！教你避坑',
-            f'备婚最后悔的事：{product}没提前看这篇',
-            f'花了3000买{product}，我后悔了...',
-        ],
-        '开箱': [
-            f'快递到了！今天开箱最近超火的{product}',
-            f'一口气开了5款{product}，结果...',
-            f'这款被称为\"神仙{product}\"的实物长这样',
-        ]
-    }
-
-    hooks = hook_map.get(content_type, hook_map['展示'])
-
-    script_map = {
-        '口播': f'今天跟大家聊聊{product}怎么选\n\n很多新娘只看包装就下单\n但其实最重要的是这三点：\n第一，糖果的克重和品质\n第二，包装是否密封防潮\n第三，商家的售后和退换政策\n\n把这三点搞清楚了\n你选的{product}绝对不会翻车！',
-        '展示': f'来，带大家看看这款{product}的细节\n\n第一眼看包装，真的很高级\n打开以后更惊喜\n糖果颗颗饱满，包装严实\n关键是这个价格，太良心了\n\n备婚的姐妹可以直接抄作业！',
-        '剧情': f'{random.choice(hooks)}\n\n（画面：拿出{product}）\n\n说实话，真的超出预期\n颜值高、品质好、价格也合适\n\n（画面：摆拍效果）\n\n婚礼当天摆出来\n宾客都说太好看了！',
-        '痛点': f'备婚选{product}，这4个坑千万别踩：\n\n❌ 只看主图不看买家秀\n❌ 不问保质期就下单\n❌ 不确认发货时间\n❌ 不先拿样品就批量买\n\n学会这4点，省心又省钱！',
-        '开箱': f'新买的{product}到货了！\n\n（开箱画面）\n\n包装完好，没有破损\n打开看看里面的糖果...\n\n（特写画面）\n\n这个质感真的很不错\n比我想象的还要好！'
-    }
-
-    script = script_map.get(content_type, script_map['展示'])
-
-    if duration == 'short':
-        script = f'{random.choice(hooks)}\n\n一句话：这个{product}闭眼入！'
-    elif duration == 'long':
-        script = script + '\n\n最后再强调一下：\n备婚选喜糖，品质第一，颜值第二\n好的{product}能让婚礼高级感翻倍\n记得先拿样品，确认满意再下单！'
-
-    tags = '#备婚 #喜糖 #婚礼好物推荐 #备婚攻略 #备婚日记'
-
-    return jsonify({
-        'success': True,
-        'hook': random.choice(hooks),
-        'script': script,
-        'tags': tags,
-        'full': f'{random.choice(hooks)}\n\n{script}\n\n{tags}',
-        'model_used': model_info['name']
-    })
+    if result['success']:
+        return jsonify(result)
+    return jsonify({'success': False, 'error': result.get('full', '生成失败')}), 500
 
 
 @app.route('/api/ai/workflow_suggest', methods=['POST'])
@@ -627,6 +514,40 @@ def api_workflow_suggest():
 
     result = workflows.get(scenario, workflows['全功能'])
     return jsonify({'success': True, 'workflow': result})
+
+
+# ==========================================
+# 通用文案生成 API（新增）
+# ==========================================
+
+@app.route('/api/generate_text', methods=['POST'])
+def api_generate_text():
+    """通用文案生成 - 支持 7 种模型自动降级"""
+    data = request.json or {}
+    prompt = data.get('prompt', '')
+    model = data.get('model', 'deepseek')
+    temperature = data.get('temperature', 0.8)
+    max_tokens = data.get('max_tokens', 2048)
+
+    if not prompt:
+        return jsonify({'success': False, 'error': '请输入提示词'}), 400
+
+    messages = [
+        {'role': 'system', 'content': '你是一个专业的内容创作助手，擅长撰写高质量的中文文案。'},
+        {'role': 'user', 'content': prompt},
+    ]
+
+    success, content, model_used, tokens = call_ai(model, messages, temperature, max_tokens)
+
+    if success:
+        return jsonify({
+            'success': True,
+            'content': content,
+            'model_used': model_used,
+            'tokens': tokens,
+        })
+
+    return jsonify({'success': False, 'error': content}), 500
 
 
 # ==========================================

@@ -2,3 +2,5 @@ flask>=3.0
 waitress>=3.0
 openpyxl>=3.1
 apscheduler>=3.10
+openai>=1.50.0
+httpx>=0.28.0
