@@ -1,899 +1,1081 @@
 {% extends "base.html" %}
-{% block title %}AI 工作站{% endblock %}
+{% block title %}AI 创作{% endblock %}
 
 {% block extra_head %}
 <style>
-    /* Tab Navigation */
-    .ws-tabs {
-        display: flex; gap: 0; margin-bottom: 24px;
-        background: var(--bg-warm); border-radius: 12px; padding: 5px;
-        overflow-x: auto;
+    /* ===== AI Create Module ===== */
+    .ai-create-wrap {
+        max-width: 1100px;
+        margin: 0 auto;
     }
-    .ws-tab {
-        padding: 11px 22px; border-radius: 9px; border: none;
-        font-size: 13.5px; font-weight: 500; cursor: pointer;
-        background: transparent; color: var(--text-secondary);
-        transition: var(--transition); font-family: inherit;
-        white-space: nowrap; display: flex; align-items: center; gap: 7px;
-    }
-    .ws-tab.active {
-        background: white; color: var(--brand); font-weight: 600;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-    .ws-tab:hover:not(.active) { color: var(--text); background: rgba(255,255,255,0.5); }
-    .ws-panel { display: none; }
-    .ws-panel.active { display: block; }
 
-    /* === LLM Hub === */
-    .model-grid {
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    /* --- Tab Bar --- */
+    .ai-tabs {
+        display: flex;
+        gap: 0;
+        border-bottom: 2px solid var(--border);
+        margin-bottom: 28px;
+    }
+    .ai-tab {
+        padding: 14px 28px;
+        font-size: 14.5px;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+        background: none;
+        color: var(--text-muted);
+        transition: all 0.2s;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        position: relative;
+        font-family: inherit;
+    }
+    .ai-tab:hover { color: var(--text); }
+    .ai-tab.active {
+        color: var(--brand);
+        border-bottom-color: var(--brand);
+        font-weight: 600;
+    }
+    .ai-tab .tab-badge {
+        font-size: 10px;
+        padding: 2px 7px;
+        border-radius: 10px;
+        margin-left: 6px;
+        background: #E8F5E9;
+        color: #2E7D32;
+        font-weight: 500;
+    }
+
+    /* --- Tab Panels --- */
+    .ai-panel { display: none; animation: fadeIn 0.3s ease; }
+    .ai-panel.show { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* --- Form Elements --- */
+    .ai-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    .ai-row-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
         gap: 16px;
+        margin-bottom: 16px;
     }
-    .model-card {
-        background: white; border-radius: var(--radius);
-        padding: 22px 24px; box-shadow: var(--shadow);
-        border: 1px solid var(--border-light);
-        transition: var(--transition); cursor: pointer;
-        position: relative; overflow: hidden;
-    }
-    .model-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
-    .model-card.selected {
-        border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-glow);
-    }
-    .model-card .model-header {
-        display: flex; align-items: center; gap: 14px; margin-bottom: 14px;
-    }
-    .model-card .model-icon {
-        width: 44px; height: 44px; border-radius: 12px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 20px; flex-shrink: 0;
-    }
-    .model-icon.deepseek { background: linear-gradient(135deg, #E8F0FE, #D0E0FF); color: #4A7FE0; }
-    .model-icon.kimi { background: linear-gradient(135deg, #E8F5E9, #C8E6C9); color: #43A047; }
-    .model-icon.ollama { background: linear-gradient(135deg, #FFF3E0, #FFE0B2); color: #E65100; }
-    .model-icon.doubao { background: linear-gradient(135deg, #F3E5F5, #E1BEE7); color: #8E24AA; }
-    .model-icon.qwen { background: linear-gradient(135deg, #E3F2FD, #BBDEFB); color: #1565C0; }
-    .model-card .model-name { font-size: 15px; font-weight: 600; color: var(--text); }
-    .model-card .model-provider { font-size: 11.5px; color: var(--text-muted); }
-    .model-card .model-stats {
-        display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-        margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-light);
-    }
-    .model-card .stat-item { font-size: 11.5px; }
-    .model-card .stat-item .stat-label { color: var(--text-muted); }
-    .model-card .stat-item .stat-val { color: var(--text); font-weight: 500; margin-top: 2px; }
-    .model-card .model-badge {
-        position: absolute; top: 18px; right: 18px;
-        padding: 4px 10px; border-radius: 12px; font-size: 10.5px; font-weight: 600;
-        background: #E8F5E9; color: #43A047;
-    }
-    .model-card .model-badge.local { background: #FFF3E0; color: #E65100; }
-    .model-card .model-strength {
-        font-size: 12px; color: var(--text-secondary);
-        margin-top: 10px; padding: 8px 12px;
-        background: var(--bg); border-radius: 8px;
-        display: flex; align-items: center; gap: 6px;
+    .ai-row-4 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 16px;
     }
 
-    /* === Image Generation === */
-    .tool-dual {
-        display: grid; grid-template-columns: 1fr 1fr;
-        gap: 24px;
+    .ai-field { margin-bottom: 18px; }
+    .ai-field label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 6px;
     }
-    @media (max-width: 1000px) { .tool-dual { grid-template-columns: 1fr; } }
-
-    .style-grid {
-        display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    .ai-field label .label-hint {
+        font-weight: 400;
+        color: var(--text-muted);
+        font-size: 11.5px;
     }
-    @media (max-width: 600px) { .style-grid { grid-template-columns: repeat(2, 1fr); } }
-    .style-option {
-        padding: 14px 10px; border: 1.5px solid var(--border);
-        border-radius: var(--radius-xs); text-align: center;
-        cursor: pointer; transition: var(--transition);
-        font-size: 13px; background: white;
+    .ai-field input[type="text"],
+    .ai-field textarea,
+    .ai-field select {
+        width: 100%;
+        padding: 11px 14px;
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius-xs);
+        font-size: 13.5px;
+        font-family: inherit;
+        color: var(--text);
+        background: #FFF;
+        transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .style-option:hover { border-color: var(--gold); background: #FFFDF8; }
-    .style-option.selected {
-        border-color: var(--brand); background: #FFF5F7;
-        color: var(--brand); font-weight: 600;
-    }
-
-    .result-box {
-        background: var(--bg); border-radius: var(--radius);
-        padding: 20px; margin-top: 16px; display: none;
-        border: 1px solid var(--border-light);
-    }
-    .result-box.show { display: block; animation: fadeInUp 0.4s ease both; }
-    .result-box img { max-width: 100%; border-radius: 8px; margin-bottom: 12px; }
-    .result-box .copy-section {
-        background: white; padding: 16px; border-radius: 8px;
-        line-height: 1.8; font-size: 14px; white-space: pre-wrap;
-        max-height: 400px; overflow-y: auto;
-    }
-
-    .form-group { margin-bottom: 16px; }
-    .form-group label {
-        display: block; font-size: 13.5px; font-weight: 500;
-        color: var(--text); margin-bottom: 6px;
-        display: flex; align-items: center; gap: 6px;
-    }
-    .form-group input, .form-group select, .form-group textarea {
-        width: 100%; padding: 10px 14px; border: 1.5px solid var(--border);
-        border-radius: var(--radius-xs); font-size: 14px;
-        font-family: 'Inter', sans-serif;
-        transition: border-color 0.2s; background: white;
-    }
-    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-        outline: none; border-color: var(--brand);
+    .ai-field textarea { resize: vertical; min-height: 80px; }
+    .ai-field input:focus,
+    .ai-field textarea:focus,
+    .ai-field select:focus {
+        outline: none;
+        border-color: var(--brand);
         box-shadow: 0 0 0 3px var(--brand-glow);
     }
-    .form-group textarea { resize: vertical; min-height: 80px; }
 
+    /* --- Model Selector --- */
+    .model-select {
+        padding: 12px 14px !important;
+        font-weight: 500 !important;
+    }
+    .model-option-recommended { color: var(--brand); font-weight: 600; }
+    .model-option { color: var(--text-secondary); }
+    .model-option-disabled { color: var(--text-muted); }
+
+    /* --- Buttons --- */
+    .ai-btn-generate {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 13px 32px;
+        border: none;
+        border-radius: var(--radius-xs);
+        font-size: 14.5px;
+        font-weight: 600;
+        cursor: pointer;
+        background: linear-gradient(135deg, var(--brand), var(--brand-light));
+        color: #FFF;
+        box-shadow: 0 4px 14px rgba(139,41,66,0.25);
+        transition: all 0.2s;
+        font-family: inherit;
+        letter-spacing: 0.3px;
+    }
+    .ai-btn-generate:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(139,41,66,0.35);
+    }
+    .ai-btn-generate:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .ai-btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 9px 18px;
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius-xs);
+        font-size: 13px;
+        cursor: pointer;
+        background: #FFF;
+        color: var(--text);
+        transition: all 0.2s;
+        font-family: inherit;
+    }
+    .ai-btn-secondary:hover {
+        border-color: var(--brand);
+        color: var(--brand);
+        background: #FFF5F7;
+    }
+
+    /* --- Loading Spinner --- */
     .loading-spinner {
-        display: inline-block; width: 18px; height: 18px;
+        display: inline-block;
+        width: 18px;
+        height: 18px;
         border: 2.5px solid rgba(255,255,255,0.3);
-        border-top: 2.5px solid white; border-radius: 50%;
-        animation: spin 0.8s linear infinite;
+        border-top-color: #FFF;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+    }
+    .loading-spinner.dark {
+        border-color: rgba(0,0,0,0.1);
+        border-top-color: var(--brand);
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* === ComfyUI Info === */
-    .info-grid {
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 14px; margin-top: 16px;
+    /* --- Result Area --- */
+    .ai-result {
+        margin-top: 24px;
+        display: none;
+        animation: fadeIn 0.4s ease;
     }
-    .info-card {
-        background: white; border-radius: var(--radius-xs);
-        padding: 16px 18px; border: 1px solid var(--border-light);
+    .ai-result.show { display: block; }
+    .ai-result-model {
+        font-size: 11.5px;
+        color: var(--text-muted);
+        margin-bottom: 14px;
+        padding: 4px 10px;
+        background: var(--bg-warm);
+        border-radius: 4px;
+        display: inline-block;
     }
-    .info-card .info-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-    .info-card .info-value { font-size: 14px; font-weight: 500; color: var(--text); margin-top: 4px; }
 
-    /* === Workflow Visual === */
-    .workflow-flow {
-        display: flex; align-items: center; gap: 8px;
-        flex-wrap: wrap; justify-content: center; padding: 20px 0;
-    }
-    .wf-node {
-        background: white; border: 1.5px solid var(--border);
-        border-radius: 12px; padding: 14px 20px; text-align: center;
-        font-size: 13px; font-weight: 500; min-width: 100px;
-        transition: var(--transition);
-    }
-    .wf-node:hover { border-color: var(--brand); box-shadow: var(--shadow); }
-    .wf-node .wf-icon { font-size: 24px; display: block; margin-bottom: 6px; }
-    .wf-node.start { background: var(--brand); color: white; border-color: var(--brand); }
-    .wf-node.kb { background: var(--gold-pale); border-color: var(--gold); }
-    .wf-node.llm { background: #E8F0FE; border-color: #4A7FE0; }
-    .wf-node.http { background: #E8F5E9; border-color: #43A047; }
-    .wf-node.end { background: var(--brand-dark); color: white; border-color: var(--brand-dark); }
-    .wf-arrow { font-size: 20px; color: var(--text-muted); }
-
-    /* === Hardware Cards === */
-    .hw-grid {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 18px; margin-top: 16px;
-    }
-    .hw-card {
-        background: white; border-radius: var(--radius);
-        padding: 24px; box-shadow: var(--shadow);
+    /* --- Image Result --- */
+    .img-preview-wrap {
+        max-width: 100%;
+        border-radius: var(--radius);
+        overflow: hidden;
+        box-shadow: var(--shadow);
         border: 1px solid var(--border-light);
-        border-top: 4px solid var(--brand);
-        transition: var(--transition);
     }
-    .hw-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
-    .hw-card.gold { border-top-color: var(--gold); }
-    .hw-card.blue { border-top-color: #4A7FE0; }
-    .hw-card .hw-level {
-        font-family: 'Noto Serif SC', serif;
-        font-size: 17px; font-weight: 600; color: var(--text);
-        margin-bottom: 12px;
+    .img-preview-wrap img {
+        width: 100%;
+        display: block;
     }
-    .hw-card .hw-gpu {
-        font-size: 14px; font-weight: 500; color: var(--brand);
-        margin-bottom: 10px;
+    .img-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 14px;
     }
-    .hw-card .hw-price { font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px; }
-    .hw-card .hw-detail {
-        font-size: 13px; color: var(--text-secondary);
-        line-height: 1.6; padding: 12px;
-        background: var(--bg); border-radius: 8px;
+
+    /* --- Video Result --- */
+    .video-preview-wrap {
+        max-width: 100%;
+        border-radius: var(--radius);
+        overflow: hidden;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border-light);
     }
-    .hw-card.gold .hw-gpu { color: #B8953A; }
-    .hw-card.blue .hw-gpu { color: #4A7FE0; }
+    .video-preview-wrap video {
+        width: 100%;
+        display: block;
+        max-height: 420px;
+    }
+    .video-progress-wrap {
+        background: var(--bg-warm);
+        border-radius: var(--radius);
+        padding: 32px;
+        text-align: center;
+        border: 1px solid var(--border-light);
+    }
+    .video-progress-wrap .status-msg {
+        font-size: 14px;
+        color: var(--text-secondary);
+        margin-top: 14px;
+    }
+    .video-progress-bar-bg {
+        width: 100%;
+        height: 6px;
+        background: var(--border);
+        border-radius: 3px;
+        margin-top: 16px;
+        overflow: hidden;
+    }
+    .video-progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--brand), var(--gold));
+        border-radius: 3px;
+        width: 0%;
+        animation: progressPulse 2s ease-in-out infinite;
+    }
+    @keyframes progressPulse {
+        0%, 100% { width: 20%; }
+        50% { width: 85%; }
+    }
+
+    /* --- XHS Card Style --- */
+    .xhs-card {
+        background: #FFF;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border-light);
+        overflow: hidden;
+    }
+    .xhs-card-header {
+        padding: 20px 24px;
+        background: linear-gradient(135deg, #FFF5F7, #FFF0F3);
+        border-bottom: 1px solid rgba(232,84,126,0.1);
+    }
+    .xhs-card-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #222;
+        line-height: 1.5;
+    }
+    .xhs-card-body {
+        padding: 20px 24px;
+        font-size: 14px;
+        line-height: 1.9;
+        color: #333;
+    }
+    .xhs-card-tags {
+        padding: 14px 24px;
+        border-top: 1px solid var(--border-light);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .xhs-tag {
+        padding: 4px 12px;
+        background: #F0F7FF;
+        color: #4A7FE0;
+        border-radius: 14px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    /* --- DY Script Table --- */
+    .dy-table-wrap {
+        overflow-x: auto;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+    }
+    .dy-table-wrap table {
+        font-size: 13px;
+        white-space: nowrap;
+    }
+    .dy-table-wrap td { white-space: normal; min-width: 80px; }
+    .dy-table-wrap td.shot-num { min-width: 50px; text-align: center; font-weight: 700; color: var(--brand); }
+    .dy-table-wrap td.shot-time { min-width: 60px; text-align: center; color: var(--text-muted); }
+    .dy-table-wrap td.shot-hook {
+        background: #FFF8EC;
+        border-left: 3px solid var(--gold);
+    }
+
+    /* --- Copy / Export Bar --- */
+    .result-toolbar {
+        display: flex;
+        gap: 10px;
+        margin-top: 16px;
+        flex-wrap: wrap;
+    }
+
+    /* --- Style Chips --- */
+    .style-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .style-chip {
+        padding: 7px 14px;
+        border: 1.5px solid var(--border);
+        border-radius: 20px;
+        font-size: 12.5px;
+        cursor: pointer;
+        background: #FFF;
+        color: var(--text-secondary);
+        transition: all 0.2s;
+        font-family: inherit;
+        white-space: nowrap;
+    }
+    .style-chip:hover {
+        border-color: var(--brand);
+        color: var(--brand);
+    }
+    .style-chip.active {
+        background: var(--brand);
+        color: #FFF;
+        border-color: var(--brand);
+    }
+
+    /* --- Error --- */
+    .ai-error {
+        background: #FFF0F0;
+        border: 1px solid #FFD0D0;
+        border-radius: var(--radius-xs);
+        padding: 14px 18px;
+        color: #D32F2F;
+        font-size: 13px;
+        margin-top: 14px;
+    }
+
+    /* --- Responsive --- */
+    @media (max-width: 768px) {
+        .ai-row, .ai-row-3, .ai-row-4 { grid-template-columns: 1fr; }
+        .ai-tabs { flex-wrap: wrap; }
+        .ai-tab { flex: 1; text-align: center; padding: 12px 10px; font-size: 13px; }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h2>✨ AI 创作工作站</h2>
-    <div class="breadcrumb">多模型接入 · 文生图 · 文生视频 · 爆款文案</div>
+    <h2>✨ AI 创作</h2>
+    <div class="breadcrumb">AI 智能生成 / 文案 · 图片 · 视频 · 脚本</div>
 </div>
 
 <div class="content">
-    <!-- Tab Bar -->
-    <div class="ws-tabs">
-        <button class="ws-tab active" onclick="switchWSTab('llm')" id="tab-llm">🧠 LLM 模型中心</button>
-        <button class="ws-tab" onclick="switchWSTab('image')" id="tab-image">🖼️ 文生图</button>
-        <button class="ws-tab" onclick="switchWSTab('video')" id="tab-video">🎬 文生视频</button>
-        <button class="ws-tab" onclick="switchWSTab('copy')" id="tab-copy">✍️ 爆款文案</button>
-        <button class="ws-tab" onclick="switchWSTab('hardware')" id="tab-hardware">⚙️ 硬件配置</button>
-    </div>
+    <div class="ai-create-wrap">
 
-    <!-- ====== Panel 1: LLM Model Hub ====== -->
-    <div class="ws-panel active" id="panel-llm">
-        <div class="card" style="margin-bottom:20px;">
-            <p style="font-size:13.5px;color:var(--text-secondary);line-height:1.7;">
-                🧠 <strong>多模型接入中心</strong> · 所有模型均兼容 OpenAI SDK 格式，只需改 <code style="background:var(--bg);padding:2px 8px;border-radius:4px;">base_url</code> 和 <code style="background:var(--bg);padding:2px 8px;border-radius:4px;">api_key</code> 即可无缝切换。
-                推荐策略：日常文案用 DeepSeek V3.1（低成本+高质量），敏感数据用 Ollama 本地模型，复杂推理用 DeepSeek R1。
-            </p>
+        <!-- ========== Tab Bar ========== -->
+        <div class="ai-tabs">
+            <button class="ai-tab active" onclick="switchTab('image')" id="tab-image">
+                🖼️ AI 生图
+            </button>
+            <button class="ai-tab" onclick="switchTab('video')" id="tab-video">
+                🎬 AI 生视频
+                <span class="tab-badge">新</span>
+            </button>
+            <button class="ai-tab" onclick="switchTab('xhs')" id="tab-xhs">
+                📕 小红书文案
+            </button>
+            <button class="ai-tab" onclick="switchTab('dy')" id="tab-dy">
+                🎵 抖音脚本
+            </button>
         </div>
-        <div class="model-grid" id="modelGrid"></div>
-    </div>
 
-    <!-- ====== Panel 2: Image Generation ====== -->
-    <div class="ws-panel" id="panel-image">
-        <div class="tool-dual">
-            <!-- Left: Generate -->
+        <!-- ================================================================ -->
+        <!-- Tab 1: AI 生图 -->
+        <!-- ================================================================ -->
+        <div class="ai-panel show" id="panel-image">
             <div class="card">
-                <div class="card-header"><h3><span class="card-icon">🎨</span> AI 图片生成</h3></div>
-                <div class="form-group">
-                    <label>🖊️ 描述你想生成的图片</label>
-                    <textarea id="img-prompt" rows="3" placeholder="例如：精致的中国风喜糖礼盒，红色包装搭配金色丝带，喜庆典雅，放在木质桌面上，柔和自然光..."></textarea>
+                <div class="card-header"><h3><span class="card-icon">🖼️</span> AI 图片生成</h3></div>
+
+                <div class="ai-field">
+                    <label>提示词 <span class="label-hint">（描述你要生成的图片）</span></label>
+                    <textarea id="img-prompt" rows="3" placeholder="例如：一款精致的中国风婚礼喜糖礼盒，红色丝绸包装，金色刺绣花纹，柔和光影，产品摄影..."></textarea>
                 </div>
-                <div class="form-group">
-                    <label>🎨 风格</label>
-                    <div class="style-grid" id="img-styles">
-                        <div class="style-option selected" data-style="摄影写实" onclick="selectStyle(this,'img')">📷 摄影写实</div>
-                        <div class="style-option" data-style="国风中式" onclick="selectStyle(this,'img')">🏮 国风中式</div>
-                        <div class="style-option" data-style="高级质感" onclick="selectStyle(this,'img')">✨ 高级质感</div>
-                        <div class="style-option" data-style="电商白底" onclick="selectStyle(this,'img')">📦 电商白底</div>
-                        <div class="style-option" data-style="可爱插画" onclick="selectStyle(this,'img')">🎨 可爱插画</div>
-                        <div class="style-option" data-style="极简留白" onclick="selectStyle(this,'img')">🎐 极简留白</div>
-                        <div class="style-option" data-style="梦幻浪漫" onclick="selectStyle(this,'img')">🌸 梦幻浪漫</div>
-                        <div class="style-option" data-style="摄影写实" onclick="selectStyle(this,'img')">📷 摄影写实</div>
+
+                <div class="ai-row-3">
+                    <div class="ai-field">
+                        <label>图片尺寸</label>
+                        <select id="img-size">
+                            <option value="1024x1024" selected>1:1 正方形 (1024×1024)</option>
+                            <option value="768x1024">3:4 竖版 (768×1024)</option>
+                            <option value="1024x576">16:9 横版 (1024×576)</option>
+                            <option value="576x1024">9:16 全屏 (576×1024)</option>
+                        </select>
+                    </div>
+                    <div class="ai-field">
+                        <label>生成模型</label>
+                        <select id="img-model" class="model-select">
+                            <option value="flux_schnell" data-recommended="true">☁️ Cloudflare Flux.1 Schnell（推荐 · 300次/天）</option>
+                            <option value="sdxl">🎨 Stable Diffusion XL</option>
+                            <option value="janus">🤖 DeepSeek Janus</option>
+                        </select>
+                    </div>
+                    <div class="ai-field">
+                        <label>图片风格</label>
+                        <div class="style-chips" id="img-style-chips">
+                            <button class="style-chip active" data-style="写实">📷 写实</button>
+                            <button class="style-chip" data-style="插画">🎨 插画</button>
+                            <button class="style-chip" data-style="国风">🏮 国风</button>
+                            <button class="style-chip" data-style="ins风">📱 ins风</button>
+                            <button class="style-chip" data-style="产品图">📦 产品图</button>
+                        </div>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>📐 尺寸</label>
-                    <select id="img-size">
-                        <option value="1024x1024" selected>正方形 1:1 (1024×1024)</option>
-                        <option value="1024x768">横版 4:3 (1024×768)</option>
-                        <option value="768x1024">竖版 3:4 (768×1024)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>⚡ 生成引擎</label>
-                    <select id="img-engine">
-                        <option value="pollinations" selected>Pollinations.ai (免费云端)</option>
-                        <option value="comfyui">ComfyUI 本地 (需部署)</option>
-                    </select>
-                </div>
-                <button class="btn btn-primary" style="padding:12px 28px;font-size:14px;" onclick="generateImage()" id="img-btn">
-                    🪄 生成图片
-                </button>
-                <div class="result-box" id="img-result">
-                    <img id="img-output" src="" alt="AI生成结果" loading="lazy" />
-                    <button class="btn btn-outline" onclick="window.open(document.getElementById('img-output').src)" style="margin-top:8px;">🔗 新窗口打开</button>
-                </div>
-            </div>
 
-            <!-- Right: ComfyUI Info -->
-            <div class="card">
-                <div class="card-header"><h3><span class="card-icon">⚙️</span> ComfyUI 本地部署</h3></div>
-                <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;margin-bottom:16px;">
-                    推荐使用 <strong>Stability Matrix</strong> 一键安装，统一管理 ComfyUI / Forge / Fooocus，共享模型文件夹。
-                </p>
-                <div class="info-grid" id="imageModelGrid"></div>
-                <div style="margin-top:16px;padding:14px;background:var(--bg);border-radius:8px;font-size:12.5px;line-height:1.8;">
-                    <strong>📌 API 暴露给工作台：</strong><br>
-                    <code style="background:white;padding:3px 8px;border-radius:4px;">server_url: http://localhost:8188</code><br>
-                    可通过 Dify HTTP 节点或 LobeChat ComfyUI 插件调用
+                <button class="ai-btn-generate" onclick="generateImage()" id="btn-image">
+                    🪄 开始生成图片
+                </button>
+
+                <div class="ai-result" id="result-image">
+                    <div class="ai-result-model" id="result-image-model"></div>
+                    <div class="img-preview-wrap">
+                        <img id="img-output" src="" alt="AI 生成结果" style="display:none;" />
+                    </div>
+                    <div class="img-actions">
+                        <button class="ai-btn-secondary" onclick="downloadImage()">⬇️ 下载图片</button>
+                        <button class="ai-btn-secondary" onclick="copyImageToPublish()">📤 插入发布包</button>
+                    </div>
                 </div>
+                <div class="ai-error" id="error-image" style="display:none;"></div>
             </div>
         </div>
-    </div>
 
-    <!-- ====== Panel 3: Video Generation ====== -->
-    <div class="ws-panel" id="panel-video">
-        <div class="tool-dual">
-            <!-- Left: Generate -->
+        <!-- ================================================================ -->
+        <!-- Tab 2: AI 生视频 -->
+        <!-- ================================================================ -->
+        <div class="ai-panel" id="panel-video">
             <div class="card">
                 <div class="card-header"><h3><span class="card-icon">🎬</span> AI 视频生成</h3></div>
-                <div class="form-group">
-                    <label>🖊️ 视频描述</label>
-                    <textarea id="video-prompt" rows="3" placeholder="例如：中国传统婚礼喜糖礼盒展示，红色包装缓缓打开，金色丝带飘落，糖果散落在丝绸上，温馨光影..."></textarea>
+
+                <div class="ai-field">
+                    <label>视频描述 <span class="label-hint">（详细描述视频内容和氛围）</span></label>
+                    <textarea id="video-prompt" rows="3" placeholder="例如：中国传统婚礼喜糖礼盒展示，红色包装缓缓打开，金色丝带飘落，糖果散落在丝绸上，温馨光影，慢镜头..."></textarea>
                 </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                    <div class="form-group">
-                        <label>⏱️ 视频时长</label>
+
+                <div class="ai-row-3">
+                    <div class="ai-field">
+                        <label>视频时长</label>
                         <select id="video-duration">
                             <option value="3秒">3秒</option>
                             <option value="5秒" selected>5秒</option>
                             <option value="10秒">10秒</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>🎨 风格</label>
-                        <select id="video-style">
-                            <option value="写实">写实</option>
-                            <option value="插画">插画</option>
-                            <option value="国风">国风</option>
-                            <option value="ins风">ins风</option>
+                    <div class="ai-field">
+                        <label>生成模型</label>
+                        <select id="video-model" class="model-select">
+                            <option value="cogvideo" data-recommended="true">🎬 CogVideoX-2B（推荐 · 免费tier）</option>
+                            <option value="svd">📹 Stable Video Diffusion</option>
+                        </select>
+                    </div>
+                    <div class="ai-field">
+                        <label>风格</label>
+                        <div class="style-chips" id="video-style-chips">
+                            <button class="style-chip active" data-style="实拍风">🎥 实拍风</button>
+                            <button class="style-chip" data-style="动漫风">✨ 动漫风</button>
+                            <button class="style-chip" data-style="产品展示">📦 产品展示</button>
+                            <button class="style-chip" data-style="抽象艺术">🎭 抽象艺术</button>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="ai-btn-generate" onclick="generateVideo()" id="btn-video">
+                    🎬 开始生成视频
+                </button>
+
+                <div class="ai-result" id="result-video">
+                    <div class="ai-result-model" id="result-video-model"></div>
+
+                    <!-- Progress -->
+                    <div class="video-progress-wrap" id="video-progress" style="display:none;">
+                        <div class="loading-spinner dark" style="width:36px;height:36px;"></div>
+                        <div class="status-msg" id="video-status-msg">AI 正在生成视频，预计 1-3 分钟...</div>
+                        <div class="video-progress-bar-bg">
+                            <div class="video-progress-bar-fill"></div>
+                        </div>
+                    </div>
+
+                    <!-- Preview -->
+                    <div class="video-preview-wrap" id="video-preview" style="display:none;">
+                        <video id="video-output" controls></video>
+                    </div>
+
+                    <div class="img-actions" id="video-actions" style="display:none;">
+                        <button class="ai-btn-secondary" onclick="downloadVideo()">⬇️ 下载视频</button>
+                    </div>
+                </div>
+                <div class="ai-error" id="error-video" style="display:none;"></div>
+            </div>
+        </div>
+
+        <!-- ================================================================ -->
+        <!-- Tab 3: 小红书文案 -->
+        <!-- ================================================================ -->
+        <div class="ai-panel" id="panel-xhs">
+            <div class="card">
+                <div class="card-header"><h3><span class="card-icon">📕</span> 小红书爆款笔记生成</h3></div>
+
+                <div class="ai-row">
+                    <div class="ai-field">
+                        <label>产品名称 / 主题 <span style="color:var(--brand);">*</span></label>
+                        <input type="text" id="xhs-product" placeholder="例如：喜糖礼盒 / 伴手礼 / 定制请柬" />
+                    </div>
+                    <div class="ai-field">
+                        <label>补充关键词 <span class="label-hint">（可选）</span></label>
+                        <input type="text" id="xhs-keywords" placeholder="例如：婚礼 中式 高级感" />
+                    </div>
+                </div>
+
+                <div class="ai-row-3">
+                    <div class="ai-field">
+                        <label>内容风格</label>
+                        <div class="style-chips" id="xhs-style-chips">
+                            <button class="style-chip active" data-style="种草测评">💚 种草测评</button>
+                            <button class="style-chip" data-style="好物分享">🎁 好物分享</button>
+                            <button class="style-chip" data-style="避坑指南">⚠️ 避坑指南</button>
+                            <button class="style-chip" data-style="教程攻略">📖 教程攻略</button>
+                            <button class="style-chip" data-style="Vlog脚本">🎥 Vlog脚本</button>
+                        </div>
+                    </div>
+                    <div class="ai-field">
+                        <label>文案长度</label>
+                        <div class="style-chips" id="xhs-length-chips">
+                            <button class="style-chip" data-length="短文案">📝 短 ~150字</button>
+                            <button class="style-chip active" data-length="标准">📄 标准 ~300字</button>
+                            <button class="style-chip" data-length="长文案">📋 长 ~500字</button>
+                        </div>
+                    </div>
+                    <div class="ai-field">
+                        <label>生成模型</label>
+                        <select id="xhs-model" class="model-select">
+                            <option value="deepseek" data-recommended="true">🔵 DeepSeek V3（推荐）</option>
+                            <option value="doubao">🟣 豆包 Pro</option>
+                            <option value="qwen">🔷 通义千问 Qwen3</option>
+                            <option value="kimi">🟢 Kimi</option>
+                            <option value="gemini">🟡 Gemini 2.0 Flash</option>
+                            <option value="gpt4o_mini">🟩 GPT-4o-mini</option>
                         </select>
                     </div>
                 </div>
-                <button class="btn btn-primary" style="padding:12px 28px;font-size:14px;" onclick="generateVideo()" id="video-btn">
-                    🎬 生成视频
+
+                <button class="ai-btn-generate" onclick="generateXhs()" id="btn-xhs">
+                    ✍️ 生成小红书文案
                 </button>
-                <div class="result-box" id="video-result">
-                    <div id="video-progress" style="display:none;padding:20px;text-align:center;">
-                        <span class="loading-spinner"></span>
-                        <p id="video-status-msg" style="margin-top:12px;color:var(--text-secondary);">AI 正在生成视频...</p>
+
+                <div class="ai-result" id="result-xhs">
+                    <div class="ai-result-model" id="result-xhs-model"></div>
+                    <div class="xhs-card">
+                        <div class="xhs-card-header">
+                            <div class="xhs-card-title" id="xhs-output-title"></div>
+                        </div>
+                        <div class="xhs-card-body" id="xhs-output-body"></div>
+                        <div class="xhs-card-tags" id="xhs-output-tags"></div>
                     </div>
-                    <div id="video-preview" style="display:none;">
-                        <video id="video-output" controls style="width:100%;max-height:400px;border-radius:8px;"></video>
-                        <a id="video-download" class="btn btn-outline" href="#" download style="margin-top:8px;display:inline-block;">⬇️ 下载视频</a>
+                    <div class="result-toolbar">
+                        <button class="ai-btn-secondary" onclick="copyXhs()">📋 复制全文</button>
+                        <button class="ai-btn-secondary" onclick="copyXhsTitle()">📌 复制标题</button>
+                        <button class="ai-btn-secondary" onclick="copyXhsTags()">🏷️ 复制标签</button>
                     </div>
-                    <div id="video-error" style="display:none;padding:16px;background:#FFF0F0;border-radius:8px;color:#d32f2f;font-size:13px;"></div>
                 </div>
+                <div class="ai-error" id="error-xhs" style="display:none;"></div>
             </div>
-            <!-- Right: Engine Info -->
+        </div>
+
+        <!-- ================================================================ -->
+        <!-- Tab 4: 抖音脚本 -->
+        <!-- ================================================================ -->
+        <div class="ai-panel" id="panel-dy">
             <div class="card">
-                <div class="card-header"><h3><span class="card-icon">⚙️</span> 视频引擎</h3></div>
-                <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;margin-bottom:16px;">
-                    当前使用 <strong>智谱 CogVideoX</strong>，免费注册即用。也支持本地 ComfyUI 部署 CogVideoX-5B（需 RTX 4090）。
-                </p>
-                <div class="info-grid" id="videoModelGrid"></div>
-                <div style="margin-top:14px;font-size:12.5px;color:var(--text-muted);line-height:1.8;">
-                    💡 <strong>未配置 ZHIPU_API_KEY？</strong><br>
-                    去 <a href="https://open.bigmodel.cn" target="_blank">open.bigmodel.cn</a> 注册，免费额度足够试用<br>
-                    在 Railway → Variables 中添加 <code>ZHIPU_API_KEY</code>
-                </div>
-            </div>
-        </div>
-    </div>
+                <div class="card-header"><h3><span class="card-icon">🎵</span> 抖音爆款脚本生成</h3></div>
 
-    <!-- ====== Panel 4: Copywriting Workflow ====== -->
-    <div class="ws-panel" id="panel-copy">
-        <!-- Dify Workflow Diagram -->
-        <div class="card" style="margin-bottom:20px;">
-            <div class="card-header"><h3><span class="card-icon">🔄</span> Dify 工作流：从选题到发布</h3></div>
-            <div class="workflow-flow">
-                <div class="wf-node start"><span class="wf-icon">🎯</span>用户输入主题</div>
-                <div class="wf-arrow">→</div>
-                <div class="wf-node llm"><span class="wf-icon">🧠</span>LLM 分析选题</div>
-                <div class="wf-arrow">→</div>
-                <div class="wf-node kb"><span class="wf-icon">📚</span>知识库检索<br><small>过往爆款笔记风格</small></div>
-                <div class="wf-arrow">→</div>
-                <div class="wf-node llm"><span class="wf-icon">✍️</span>生成标题/正文</div>
-                <div class="wf-arrow">→</div>
-                <div class="wf-node http"><span class="wf-icon">🖼️</span>ComfyUI 配图</div>
-                <div class="wf-arrow">→</div>
-                <div class="wf-node end"><span class="wf-icon">📤</span>完整发布包</div>
-            </div>
-            <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;">
-                <span style="font-size:12px;color:var(--text-muted);">🔹 <b>知识库节点</b>：上传10-20篇爆款笔记作为风格参考</span>
-                <span style="font-size:12px;color:var(--text-muted);">🔹 <b>LLM节点</b>：根据平台特色生成不同风格文案</span>
-                <span style="font-size:12px;color:var(--text-muted);">🔹 <b>HTTP节点</b>：调用ComfyUI API自动生成配图</span>
-            </div>
-        </div>
+                <div class="ai-field">
+                    <label>产品名称 / 主题 <span style="color:var(--brand);">*</span></label>
+                    <input type="text" id="dy-product" placeholder="例如：喜糖礼盒 / 伴手礼开箱 / 婚礼好物推荐" />
+                </div>
 
-        <!-- Platform Selector Tabs -->
-        <div style="display:flex;gap:12px;margin-bottom:20px;">
-            <button class="btn btn-primary" onclick="switchCopyTab('xhs')" id="copy-tab-xhs">📕 小红书文案</button>
-            <button class="btn btn-outline" onclick="switchCopyTab('douyin')" id="copy-tab-douyin">🎵 抖音脚本</button>
-        </div>
+                <div class="ai-row-3">
+                    <div class="ai-field">
+                        <label>脚本风格</label>
+                        <div class="style-chips" id="dy-type-chips">
+                            <button class="style-chip active" data-style="开箱测评">📦 开箱测评</button>
+                            <button class="style-chip" data-style="教程干货">📖 教程干货</button>
+                            <button class="style-chip" data-style="剧情反转">🎭 剧情反转</button>
+                            <button class="style-chip" data-style="对比挑战">⚡ 对比挑战</button>
+                            <button class="style-chip" data-style="情感共鸣">💕 情感共鸣</button>
+                        </div>
+                    </div>
+                    <div class="ai-field">
+                        <label>时长模板</label>
+                        <div class="style-chips" id="dy-duration-chips">
+                            <button class="style-chip" data-duration="15秒">⏱️ 15秒（3镜）</button>
+                            <button class="style-chip active" data-duration="30秒">⏱️ 30秒（5镜）</button>
+                            <button class="style-chip" data-duration="60秒">⏱️ 60秒（8镜）</button>
+                        </div>
+                    </div>
+                    <div class="ai-field">
+                        <label>生成模型</label>
+                        <select id="dy-model" class="model-select">
+                            <option value="deepseek" data-recommended="true">🔵 DeepSeek V3（推荐）</option>
+                            <option value="doubao">🟣 豆包 Pro</option>
+                            <option value="qwen">🔷 通义千问 Qwen3</option>
+                            <option value="kimi">🟢 Kimi</option>
+                            <option value="gemini">🟡 Gemini 2.0 Flash</option>
+                            <option value="gpt4o_mini">🟩 GPT-4o-mini</option>
+                        </select>
+                    </div>
+                </div>
 
-        <!-- XHS Copy Panel -->
-        <div class="card" id="copy-panel-xhs">
-            <div class="form-group">
-                <label>🎁 产品名称</label>
-                <input type="text" id="xhs-product" value="喜糖礼盒" placeholder="例如：喜糖礼盒、伴手礼...">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
-                <div class="form-group">
-                    <label>📝 内容风格</label>
-                    <select id="xhs-style">
-                        <option value="种草">种草推荐</option>
-                        <option value="测评">真实测评</option>
-                        <option value="攻略">选购攻略</option>
-                        <option value="分享">经验分享</option>
-                        <option value="探店">探店体验</option>
-                    </select>
+                <button class="ai-btn-generate" onclick="generateDy()" id="btn-dy">
+                    🎬 生成抖音脚本
+                </button>
+
+                <div class="ai-result" id="result-dy">
+                    <div class="ai-result-model" id="result-dy-model"></div>
+                    <div class="dy-table-wrap" id="dy-output-table"></div>
+                    <div class="result-toolbar">
+                        <button class="ai-btn-secondary" onclick="copyDy()">📋 复制完整脚本</button>
+                        <button class="ai-btn-secondary" onclick="exportDyMarkdown()">📥 导出 Markdown</button>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>📏 文案长度</label>
-                    <select id="xhs-words">
-                        <option value="short">短文案 (~150字)</option>
-                        <option value="medium" selected>标准 (~300字)</option>
-                        <option value="long">长文案 (~500字)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>🧠 生成模型</label>
-                    <select id="xhs-model">
-                        <option value="deepseek" selected>🔵 DeepSeek V3.1 (推荐)</option>
-                        <option value="doubao">🟣 豆包 Pro 低成本</option>
-                        <option value="qwen">🔷 通义千问 Qwen3</option>
-                        <option value="kimi">🟢 Kimi 128K上下文</option>
-                        <option value="gemini">🟡 Gemini 2.0 Flash 免费</option>
-                        <option value="openai">🟩 GPT-4o-mini</option>
-                        <option value="yi">💗 Yi-Large</option>
-                    </select>
-                    <small style="font-size:11px;color:var(--text-muted);margin-top:4px;display:block;">
-                        ⚡ 无 API Key 时自动回退模板 · 配置后可调用真实 AI
-                    </small>
-                </div>
-            </div>
-            <button class="btn btn-primary" style="padding:12px 28px;font-size:14px;" onclick="generateXhs()" id="xhs-btn">
-                ✍️ 生成文案
-            </button>
-            <div class="result-box" id="xhs-result">
-                <div class="copy-section" id="xhs-output"></div>
-                <div style="display:flex;gap:8px;margin-top:12px;">
-                    <button class="btn btn-outline" onclick="copyText('xhs-output')">📋 一键复制</button>
-                    <button class="btn btn-outline" onclick="generateImageWithText()">🖼️ 生成配图</button>
-                </div>
+                <div class="ai-error" id="error-dy" style="display:none;"></div>
             </div>
         </div>
 
-        <!-- Douyin Copy Panel -->
-        <div class="card" id="copy-panel-douyin" style="display:none;">
-            <div class="form-group">
-                <label>🎁 产品名称</label>
-                <input type="text" id="dy-product" value="喜糖礼盒" placeholder="例如：喜糖礼盒、伴手礼...">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
-                <div class="form-group">
-                    <label>🎬 内容类型</label>
-                    <select id="dy-type">
-                        <option value="展示" selected>产品展示</option>
-                        <option value="口播">口播讲解</option>
-                        <option value="剧情">剧情演绎</option>
-                        <option value="痛点">痛点解决</option>
-                        <option value="开箱">开箱测评</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>⏱️ 视频时长</label>
-                    <select id="dy-duration">
-                        <option value="short">短视频 (~30秒)</option>
-                        <option value="medium" selected>中视频 (~60秒)</option>
-                        <option value="long">长视频 (~90秒)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>🧠 生成模型</label>
-                    <select id="dy-model">
-                        <option value="deepseek" selected>🔵 DeepSeek V3.1 (推荐)</option>
-                        <option value="doubao">🟣 豆包 Pro 低成本</option>
-                        <option value="qwen">🔷 通义千问 Qwen3</option>
-                        <option value="kimi">🟢 Kimi 128K上下文</option>
-                        <option value="gemini">🟡 Gemini 2.0 Flash 免费</option>
-                        <option value="openai">🟩 GPT-4o-mini</option>
-                        <option value="yi">💗 Yi-Large</option>
-                    </select>
-                    <small style="font-size:11px;color:var(--text-muted);margin-top:4px;display:block;">
-                        ⚡ 无 API Key 时自动回退模板 · 配置后可调用真实 AI
-                    </small>
-                </div>
-            </div>
-            <button class="btn btn-primary" style="padding:12px 28px;font-size:14px;" onclick="generateDy()" id="dy-btn">
-                🎬 生成脚本
-            </button>
-            <div class="result-box" id="dy-result">
-                <div class="copy-section" id="dy-output"></div>
-                <button class="btn btn-outline" onclick="copyText('dy-output')" style="margin-top:12px;">📋 一键复制</button>
-            </div>
-        </div>
-    </div>
+    </div><!-- /ai-create-wrap -->
+</div><!-- /content -->
+{% endblock %}
 
-    <!-- ====== Panel 5: Hardware Guide ====== -->
-    <div class="ws-panel" id="panel-hardware">
-        <div class="card">
-            <div class="card-header"><h3><span class="card-icon">💻</span> GPU 硬件配置推荐</h3></div>
-            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:18px;">
-                所有方案均需 <strong>NVIDIA 显卡</strong>，推荐搭配 32GB+ 系统内存和 SSD 存储。
-            </p>
-            <div class="hw-grid" id="hardwareGrid"></div>
-        </div>
-
-        <div class="card" style="margin-top:20px;">
-            <div class="card-header"><h3><span class="card-icon">🚀</span> 快速起步 Checklist</h3></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13.5px;line-height:2;">
-                <div>1️⃣ 购买 RTX 4060 或以上 N卡</div>
-                <div>2️⃣ 安装 Ollama → <code>ollama pull qwen3:8b</code></div>
-                <div>3️⃣ 下载 Stability Matrix 装 ComfyUI</div>
-                <div>4️⃣ Docker 部署 Dify 工作台</div>
-                <div>5️⃣ 注册 DeepSeek API（有免费额度）</div>
-                <div>6️⃣ Dify 配置模型供应商 + HTTP节点</div>
-                <div>7️⃣ 上传爆款笔记到知识库</div>
-                <div>8️⃣ 创建文案生成工作流 → 发布使用</div>
-            </div>
-            <div style="margin-top:16px;padding:16px;background:var(--gold-pale);border-radius:8px;border:1px solid rgba(201,169,97,0.2);">
-                <strong style="color:var(--brand-dark);">🏆 性价比之王组合：</strong><br>
-                <span style="font-size:13.5px;">Dify + Ollama(Qwen3 8B) + DeepSeek API + ComfyUI(FLUX.2 klein) + CogVideoX-2B<br>
-                一张 RTX 4060 即可起步，月均 API 成本可控制在 50 元以内。</span>
-            </div>
-        </div>
-    </div>
-</div>
-
+{% block extra_scripts %}
 <script>
-// ==================== Tab Switching ====================
-function switchWSTab(tab) {
-    document.querySelectorAll('.ws-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.ws-panel').forEach(p => p.classList.remove('active'));
+// ==================== State ====================
+let currentTab = 'image';
+let imgStyle = '写实';
+let videoStyle = '实拍风';
+let xhsStyle = '种草测评';
+let xhsLength = '标准';
+let dyStyle = '开箱测评';
+let dyDuration = '30秒';
+let videoPollInterval = null;
+
+// ==================== Tab Switch ====================
+function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.ai-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.ai-panel').forEach(p => p.classList.remove('show'));
     document.getElementById('tab-' + tab).classList.add('active');
-    document.getElementById('panel-' + tab).classList.add('active');
-    if (tab === 'llm') loadModels();
-    if (tab === 'image') loadImageModels();
-    if (tab === 'video') loadVideoModels();
-    if (tab === 'hardware') loadHardware();
+    document.getElementById('panel-' + tab).classList.add('show');
 }
 
-function switchCopyTab(tab) {
-    ['xhs', 'douyin'].forEach(t => {
-        const btn = document.getElementById('copy-tab-' + t);
-        const panel = document.getElementById('copy-panel-' + t);
-        if (t === tab) {
-            btn.className = 'btn btn-primary';
-            panel.style.display = 'block';
-        } else {
-            btn.className = 'btn btn-outline';
-            panel.style.display = 'none';
-        }
+// ==================== Style Chips ====================
+document.addEventListener('DOMContentLoaded', () => {
+    setupStyleChips('img-style-chips', (v) => { imgStyle = v; });
+    setupStyleChips('video-style-chips', (v) => { videoStyle = v; });
+    setupStyleChips('xhs-style-chips', (v) => { xhsStyle = v; });
+    setupStyleChips('xhs-length-chips', (v) => { xhsLength = v; });
+    setupStyleChips('dy-type-chips', (v) => { dyStyle = v; });
+    setupStyleChips('dy-duration-chips', (v) => { dyDuration = v; });
+});
+
+function setupStyleChips(containerId, callback) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.querySelectorAll('.style-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            container.querySelectorAll('.style-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            callback(chip.dataset.style || chip.dataset.length || chip.dataset.duration);
+        });
     });
 }
 
-// ==================== Load Model Data ====================
-async function fetchModels() {
-    try { const r = await fetch('/api/ai/models'); return await r.json(); }
-    catch(e) { return null; }
+// ==================== Helpers ====================
+function showResult(panelId, show=true) {
+    const el = document.getElementById('result-' + panelId);
+    if (el) { el.classList.toggle('show', show); }
 }
 
-let modelData = null;
-
-async function loadModels() {
-    if (document.getElementById('modelGrid').children.length > 0) return;
-    modelData = modelData || await fetchModels();
-    if (!modelData) return;
-
-    const grid = document.getElementById('modelGrid');
-    const icons = {deepseek:'🔵', kimi:'🟢', ollama:'🟠', doubao:'🟣', qwen:'🔷', gemini:'🟡', openai:'🟩', yi:'💗'};
-
-    // 使用 available 数组显示配置状态
-    const available = modelData.available || [];
-    const configured = {};
-    available.forEach(m => { configured[m.id] = m.configured; });
-
-    for (const [key, m] of Object.entries(modelData.llm)) {
-        const isLocal = key === 'ollama';
-        const isConfigured = configured[key] === true;
-        const statusBadge = isLocal
-            ? '<div class="model-badge local">🖥️ 本地</div>'
-            : (isConfigured
-                ? '<div class="model-badge" style="background:#E8F5E9;color:#43A047;">✅ 已配置</div>'
-                : '<div class="model-badge" style="background:#FFF3E0;color:#E65100;">⚡ 需配置</div>');
-
-        grid.innerHTML += `
-        <div class="model-card" onclick="selectModel('${key}')" id="model-${key}">
-            ${statusBadge}
-            <div class="model-header">
-                <div class="model-icon ${key}">${icons[key]||'🤖'}</div>
-                <div>
-                    <div class="model-name">${m.name}</div>
-                    <div class="model-provider">${m.provider}</div>
-                </div>
-            </div>
-            <div class="model-stats">
-                <div class="stat-item"><div class="stat-label">输入价格</div><div class="stat-val">${m.price_input}</div></div>
-                <div class="stat-item"><div class="stat-label">输出价格</div><div class="stat-val">${m.price_output}</div></div>
-                <div class="stat-item"><div class="stat-label">上下文</div><div class="stat-val">${m.context}</div></div>
-                <div class="stat-item"><div class="stat-label">免费额度</div><div class="stat-val">${m.free_quota}</div></div>
-            </div>
-            <div class="model-strength">💡 ${m.strength}</div>
-        </div>`;
-    }
+function showError(panelId, msg) {
+    const el = document.getElementById('error-' + panelId);
+    if (el) { el.style.display = msg ? 'block' : 'none'; el.textContent = msg; }
 }
 
-function selectModel(key) {
-    document.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
-    const card = document.getElementById('model-' + key);
-    if (card) card.classList.add('selected');
+function showModelTag(panelId, text) {
+    const el = document.getElementById('result-' + panelId + '-model');
+    if (el) { el.textContent = '🧠 ' + text; el.style.display = text ? 'inline-block' : 'none'; }
 }
 
-async function loadImageModels() {
-    if (document.getElementById('imageModelGrid').children.length > 0) return;
-    modelData = modelData || await fetchModels();
-    if (!modelData) return;
-
-    const grid = document.getElementById('imageModelGrid');
-    for (const [key, m] of Object.entries(modelData.image)) {
-        grid.innerHTML += `
-        <div class="info-card">
-            <div class="info-label">模型</div>
-            <div class="info-value">${m.name}</div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:6px;">
-                显存: ${m.vram} · 速度: ${m.speed}<br>
-                质量: ${m.quality} · 协议: ${m.license}
-            </div>
-        </div>`;
-    }
-}
-
-async function loadVideoModels() {
-    if (document.getElementById('videoModelGrid').children.length > 0) return;
-    modelData = modelData || await fetchModels();
-    if (!modelData) return;
-
-    const vgrid = document.getElementById('videoModelGrid');
-    for (const [key, m] of Object.entries(modelData.video)) {
-        vgrid.innerHTML += `
-        <div class="info-card">
-            <div class="info-label">${m.name}</div>
-            <div class="info-value" style="font-size:12.5px;">显存: ${m.vram}</div>
-            <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">
-                ${m.duration} · A100: ${m.speed_a100} · ${m.license}
-            </div>
-        </div>`;
-    }
-
-    const cgrid = document.getElementById('cloudVideoGrid');
-    for (const [key, m] of Object.entries(modelData.cloud_video)) {
-        cgrid.innerHTML += `
-        <div class="info-card">
-            <div class="info-label">${m.name}</div>
-            <div class="info-value" style="font-size:12.5px;">${m.price}</div>
-            <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">
-                ${m.duration} · ${m.resolution}
-            </div>
-        </div>`;
-    }
-}
-
-async function loadHardware() {
-    if (document.getElementById('hardwareGrid').children.length > 0) return;
-    modelData = modelData || await fetchModels();
-    if (!modelData) return;
-
-    const grid = document.getElementById('hardwareGrid');
-    const icons = {brand:'🎖️', gold:'🏆', blue:'🚀'};
-    for (const hw of modelData.hardware) {
-        grid.innerHTML += `
-        <div class="hw-card ${hw.color}">
-            <div class="hw-level">${icons[hw.color]||'💻'} ${hw.level}</div>
-            <div class="hw-gpu">${hw.gpu}</div>
-            <div class="hw-price">💰 预算：${hw.budget}</div>
-            <div class="hw-detail">
-                <strong>✅ 能跑：</strong>${hw.can_run}<br>
-                <strong>⚠️ 限制：</strong>${hw.limit}
-            </div>
-        </div>`;
-    }
-}
-
-// ==================== Video Gen ====================
-let videoPollTimer = null;
-
-async function generateVideo() {
-    const prompt = document.getElementById('video-prompt').value;
-    if (!prompt) { alert('请输入视频描述'); return; }
-
-    const btn = document.getElementById('video-btn');
-    const progress = document.getElementById('video-progress');
-    const preview = document.getElementById('video-preview');
-    const errorBox = document.getElementById('video-error');
-
-    progress.style.display = 'block';
-    preview.style.display = 'none';
-    errorBox.style.display = 'none';
-    btn.innerHTML = '<span class="loading-spinner"></span> 提交中...';
-    btn.disabled = true;
-    document.getElementById('video-status-msg').textContent = '正在提交生成任务...';
-    document.getElementById('video-result').classList.add('show');
-
+async function copyToClipboard(text) {
     try {
-        const resp = await fetch('/api/generate_video', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                prompt,
-                duration: document.getElementById('video-duration').value,
-                style: document.getElementById('video-style').value
-            })
-        });
-        const data = await resp.json();
-
-        if (data.success && data.task_id) {
-            document.getElementById('video-status-msg').textContent = 'AI 正在生成视频，请耐心等待（约1-3分钟）...';
-            btn.innerHTML = '⏳ 生成中...';
-            startVideoPolling(data.task_id, btn);
-        } else {
-            showVideoError(data.error || '提交失败，请确保已配置 ZHIPU_API_KEY');
-            btn.innerHTML = '🎬 生成视频';
-            btn.disabled = false;
-        }
+        await navigator.clipboard.writeText(text);
+        // Quick toast feedback
+        return true;
     } catch(e) {
-        showVideoError('网络错误: ' + e.message);
-        btn.innerHTML = '🎬 生成视频';
-        btn.disabled = false;
+        // Fallback
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+        return true;
     }
 }
 
-function startVideoPolling(taskId, btn) {
-    if (videoPollTimer) clearInterval(videoPollTimer);
-    let pollCount = 0;
-    videoPollTimer = setInterval(async () => {
-        pollCount++;
-        try {
-            const resp = await fetch('/api/video_status/' + taskId);
-            const data = await resp.json();
-            if (data.status === 'completed') {
-                clearInterval(videoPollTimer);
-                videoPollTimer = null;
-                document.getElementById('video-progress').style.display = 'none';
-                const preview = document.getElementById('video-preview');
-                preview.style.display = 'block';
-                const videoEl = document.getElementById('video-output');
-                videoEl.src = data.video_url;
-                videoEl.load();
-                document.getElementById('video-download').href = data.video_url;
-                btn.innerHTML = '🎬 生成视频';
-                btn.disabled = false;
-            } else if (data.status === 'failed') {
-                clearInterval(videoPollTimer);
-                videoPollTimer = null;
-                showVideoError(data.error || '视频生成失败，请尝试修改提示词');
-                btn.innerHTML = '🎬 生成视频';
-                btn.disabled = false;
-            } else {
-                const elapsed = pollCount * 5;
-                const msg = document.getElementById('video-status-msg');
-                if (elapsed < 60) {
-                    msg.textContent = `AI 正在生成视频...（已等待 ${elapsed} 秒）`;
-                } else {
-                    msg.textContent = `AI 正在生成视频...（已等待 ${Math.floor(elapsed/60)} 分 ${elapsed%60} 秒，稍等）`;
-                }
-            }
-        } catch(e) {}
-    }, 5000);
-    setTimeout(() => {
-        if (videoPollTimer) {
-            clearInterval(videoPollTimer);
-            videoPollTimer = null;
-            showVideoError('生成超时（超过5分钟），请重试');
-            btn.innerHTML = '🎬 生成视频';
-            btn.disabled = false;
-        }
-    }, 300000);
+function getModelEmoji(modelId) {
+    const map = { deepseek:'🔵', doubao:'🟣', qwen:'🔷', kimi:'🟢', gemini:'🟡', gpt4o_mini:'🟩',
+                  flux_schnell:'☁️', janus:'🤖', sdxl:'🎨', cogvideo:'🎬', svd:'📹' };
+    return map[modelId] || '🤖';
 }
 
-function showVideoError(msg) {
-    document.getElementById('video-progress').style.display = 'none';
-    document.getElementById('video-preview').style.display = 'none';
-    const err = document.getElementById('video-error');
-    err.style.display = 'block';
-    err.innerHTML = '❌ ' + msg;
-}
-
-// ==================== Image Gen ====================
-let imgStyle = '摄影写实';
-
-function selectStyle(el) {
-    el.parentElement.querySelectorAll('.style-option').forEach(o => o.classList.remove('selected'));
-    el.classList.add('selected');
-    imgStyle = el.dataset.style;
-}
-
+// ================================================================
+// Tab 1: AI 生图
+// ================================================================
 async function generateImage() {
     const prompt = document.getElementById('img-prompt').value;
-    if (!prompt) { alert('请输入描述文字'); return; }
+    if (!prompt) { showError('image', '请输入提示词'); return; }
 
-    const btn = document.getElementById('img-btn');
-    btn.innerHTML = '<span class="loading-spinner"></span> 生成中...';
+    const btn = document.getElementById('btn-image');
+    btn.innerHTML = '<span class="loading-spinner"></span> AI 正在生成...';
     btn.disabled = true;
+    showError('image', '');
+    showResult('image', false);
 
     try {
-        const resp = await fetch('/api/generate_image', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
+        const modelEl = document.getElementById('img-model');
+        const model = modelEl.value;
+
+        const resp = await fetch('/api/ai/image', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                prompt, style: imgStyle,
+                prompt: prompt,
+                style: imgStyle,
                 size: document.getElementById('img-size').value,
-                engine: document.getElementById('img-engine').value
+                model: model,
             })
         });
         const data = await resp.json();
-        const result = document.getElementById('img-result');
-        result.classList.add('show');
-        document.getElementById('img-output').src = data.image_url;
-    } catch(e) { alert('生成失败: ' + e.message); }
-    btn.innerHTML = '🪄 生成图片';
+
+        if (data.success) {
+            const img = document.getElementById('img-output');
+            img.src = data.image_url;
+            img.style.display = 'block';
+            showResult('image', true);
+            showModelTag('image', getModelEmoji(model) + ' ' + (data.engine || 'AI'));
+        } else {
+            showError('image', data.error || '生成失败，请重试');
+        }
+    } catch(e) {
+        showError('image', '网络错误: ' + e.message);
+    }
+    btn.innerHTML = '🪄 开始生成图片';
     btn.disabled = false;
 }
 
-function generateImageWithText() {
-    switchWSTab('image');
-    const title = document.getElementById('xhs-output')?.innerText?.split('\n')[0] || '喜糖礼盒';
-    document.getElementById('img-prompt').value = title + '，精美的产品摄影';
-    setTimeout(() => document.getElementById('img-prompt').scrollIntoView({behavior:'smooth'}), 200);
+function downloadImage() {
+    const img = document.getElementById('img-output');
+    if (!img.src) return;
+    const a = document.createElement('a');
+    a.href = img.src;
+    a.download = 'ai-image-' + Date.now() + '.png';
+    a.click();
 }
 
-// ==================== Copy Gen ====================
+function copyImageToPublish() {
+    switchTab('xhs');
+}
+
+// ================================================================
+// Tab 2: AI 生视频
+// ================================================================
+async function generateVideo() {
+    const prompt = document.getElementById('video-prompt').value;
+    if (!prompt) { showError('video', '请输入视频描述'); return; }
+
+    const btn = document.getElementById('btn-video');
+    btn.innerHTML = '<span class="loading-spinner"></span> 提交中...';
+    btn.disabled = true;
+    showError('video', '');
+    showResult('video', false);
+
+    // Hide old results
+    document.getElementById('video-preview').style.display = 'none';
+    document.getElementById('video-actions').style.display = 'none';
+
+    try {
+        const modelEl = document.getElementById('video-model');
+        const model = modelEl.value;
+
+        const resp = await fetch('/api/ai/video', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                prompt: prompt,
+                duration: document.getElementById('video-duration').value,
+                style: videoStyle,
+                model: model,
+            })
+        });
+        const data = await resp.json();
+
+        if (data.success) {
+            showResult('video', true);
+            showModelTag('video', getModelEmoji(model) + ' ' + (data.engine || 'AI'));
+
+            // Show progress
+            const progressEl = document.getElementById('video-progress');
+            progressEl.style.display = 'block';
+            document.getElementById('video-status-msg').textContent = 'AI 正在生成视频，预计 1-3 分钟...';
+
+            // Start polling
+            startVideoPolling(data.task_id);
+        } else {
+            showError('video', data.error || '视频引擎未配置。请在 Railway Variables 中添加 HF_API_KEY');
+        }
+    } catch(e) {
+        showError('video', '网络错误: ' + e.message);
+    }
+    btn.innerHTML = '🎬 开始生成视频';
+    btn.disabled = false;
+}
+
+function startVideoPolling(taskId) {
+    if (videoPollInterval) clearInterval(videoPollInterval);
+
+    videoPollInterval = setInterval(async () => {
+        try {
+            const resp = await fetch('/api/ai/video_status/' + taskId);
+            const data = await resp.json();
+
+            if (data.status === 'completed') {
+                clearInterval(videoPollInterval);
+                videoPollInterval = null;
+
+                document.getElementById('video-progress').style.display = 'none';
+                const videoEl = document.getElementById('video-output');
+                videoEl.src = data.video_url;
+                document.getElementById('video-preview').style.display = 'block';
+                document.getElementById('video-actions').style.display = 'flex';
+            } else if (data.status === 'failed') {
+                clearInterval(videoPollInterval);
+                videoPollInterval = null;
+                document.getElementById('video-progress').style.display = 'none';
+                showError('video', data.error || '视频生成失败');
+            } else {
+                document.getElementById('video-status-msg').textContent = data.message || '正在生成中...';
+            }
+        } catch(e) {
+            // Ignore polling errors
+        }
+    }, 5000); // poll every 5s
+}
+
+function downloadVideo() {
+    const video = document.getElementById('video-output');
+    if (!video.src) return;
+    const a = document.createElement('a');
+    a.href = video.src;
+    a.download = 'ai-video-' + Date.now() + '.mp4';
+    a.click();
+}
+
+// ================================================================
+// Tab 3: 小红书文案
+// ================================================================
 async function generateXhs() {
-    const btn = document.getElementById('xhs-btn');
+    const product = document.getElementById('xhs-product').value;
+    if (!product) { showError('xhs', '请输入产品名称'); return; }
+
+    const btn = document.getElementById('btn-xhs');
     btn.innerHTML = '<span class="loading-spinner"></span> AI 创作中...';
     btn.disabled = true;
+    showError('xhs', '');
+    showResult('xhs', false);
 
     try {
-        const resp = await fetch('/api/generate_xhs_copy', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
+        const modelEl = document.getElementById('xhs-model');
+        const model = modelEl.value;
+
+        const resp = await fetch('/api/ai/xiaohongshu', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                product: document.getElementById('xhs-product').value,
-                style: document.getElementById('xhs-style').value,
-                word_count: document.getElementById('xhs-words').value,
-                model: document.getElementById('xhs-model').value
+                product: product,
+                style: xhsStyle,
+                length: xhsLength,
+                keywords: document.getElementById('xhs-keywords').value,
+                model: model,
             })
         });
         const data = await resp.json();
-        const result = document.getElementById('xhs-result');
-        result.classList.add('show');
+
         if (data.success) {
-            const tokensInfo = data.tokens ? ` | 📊 ${data.tokens.total} tokens` : '';
-            document.getElementById('xhs-output').innerHTML =
-                '<span style="color:var(--text-muted);font-size:11px;">🤖 模型：' + data.model_used + tokensInfo + '</span><br><br>' +
-                data.full.replace(/\n/g, '<br>');
+            showResult('xhs', true);
+            showModelTag('xhs', data.model_used || 'AI');
+
+            // Render
+            document.getElementById('xhs-output-title').textContent = data.title || '';
+            document.getElementById('xhs-output-body').innerHTML = (data.body || data.full || '').replace(/\n/g, '<br>');
+
+            // Tags
+            const tagsEl = document.getElementById('xhs-output-tags');
+            const tags = (data.tags || '').split('#').filter(t => t.trim());
+            tagsEl.innerHTML = tags.map(t => '<span class="xhs-tag">#' + t.trim() + '</span>').join('');
+
+            // Store for copy
+            document.getElementById('xhs-output-title').dataset.full = data.full || '';
         } else {
-            document.getElementById('xhs-output').innerHTML =
-                '<span style="color:var(--error);">❌ ' + (data.error || '生成失败') + '</span>';
+            showError('xhs', data.error || '生成失败');
         }
-    } catch(e) { document.getElementById('xhs-output').innerHTML = '<span style="color:var(--error);">❌ ' + e.message + '</span>'; }
-    btn.innerHTML = '✍️ 生成文案';
+    } catch(e) {
+        showError('xhs', '网络错误: ' + e.message);
+    }
+    btn.innerHTML = '✍️ 生成小红书文案';
     btn.disabled = false;
 }
 
+function copyXhs() {
+    const full = document.getElementById('xhs-output-title').dataset.full ||
+        document.getElementById('xhs-output-title').textContent + '\n\n' +
+        document.getElementById('xhs-output-body').innerText + '\n\n' +
+        document.getElementById('xhs-output-tags').innerText;
+    copyToClipboard(full).then(() => alert('已复制全文！'));
+}
+
+function copyXhsTitle() {
+    copyToClipboard(document.getElementById('xhs-output-title').textContent).then(() => alert('已复制标题！'));
+}
+
+function copyXhsTags() {
+    copyToClipboard(document.getElementById('xhs-output-tags').innerText).then(() => alert('已复制标签！'));
+}
+
+// ================================================================
+// Tab 4: 抖音脚本
+// ================================================================
 async function generateDy() {
-    const btn = document.getElementById('dy-btn');
+    const product = document.getElementById('dy-product').value;
+    if (!product) { showError('dy', '请输入产品名称'); return; }
+
+    const btn = document.getElementById('btn-dy');
     btn.innerHTML = '<span class="loading-spinner"></span> AI 创作中...';
     btn.disabled = true;
+    showError('dy', '');
+    showResult('dy', false);
 
     try {
-        const resp = await fetch('/api/generate_dy_copy', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
+        const modelEl = document.getElementById('dy-model');
+        const model = modelEl.value;
+
+        const resp = await fetch('/api/ai/douyin', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                product: document.getElementById('dy-product').value,
-                type: document.getElementById('dy-type').value,
-                duration: document.getElementById('dy-duration').value,
-                model: document.getElementById('dy-model').value
+                product: product,
+                style: dyStyle,
+                duration: dyDuration,
+                model: model,
             })
         });
         const data = await resp.json();
-        const result = document.getElementById('dy-result');
-        result.classList.add('show');
+
         if (data.success) {
-            const tokensInfo = data.tokens ? ` | 📊 ${data.tokens.total} tokens` : '';
-            document.getElementById('dy-output').innerHTML =
-                '<span style="color:var(--text-muted);font-size:11px;">🤖 模型：' + data.model_used + tokensInfo + '</span><br><br>' +
-                data.full.replace(/\n/g, '<br>');
+            showResult('dy', true);
+            showModelTag('dy', data.model_used || 'AI');
+
+            // Render
+            document.getElementById('dy-output-table').innerHTML = renderDyScript(data.full || '');
         } else {
-            document.getElementById('dy-output').innerHTML =
-                '<span style="color:var(--error);">❌ ' + (data.error || '生成失败') + '</span>';
+            showError('dy', data.error || '生成失败');
         }
-    } catch(e) { document.getElementById('dy-output').innerHTML = '<span style="color:var(--error);">❌ ' + e.message + '</span>'; }
-    btn.innerHTML = '🎬 生成脚本';
+    } catch(e) {
+        showError('dy', '网络错误: ' + e.message);
+    }
+    btn.innerHTML = '🎬 生成抖音脚本';
     btn.disabled = false;
 }
 
-function copyText(id) {
-    const el = document.getElementById(id);
-    navigator.clipboard.writeText(el.innerText).then(() => {
-        const orig = event.target.innerText;
-        event.target.innerText = '✅ 已复制！';
-        setTimeout(() => event.target.innerText = orig, 1500);
-    });
+function renderDyScript(text) {
+    // Try to parse markdown table
+    const lines = text.split('\n');
+    let tableHtml = '<table><thead><tr><th>镜号</th><th>时长</th><th>画面描述</th><th>台词/旁白</th><th>备注</th></tr></thead><tbody>';
+    let inTable = false;
+    let extraHtml = '';
+
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+            // Table row
+            const cells = trimmed.split('|').filter(c => c.trim());
+            if (cells.length >= 3) {
+                // Skip separator row
+                if (cells.every(c => c.trim().match(/^[-:]+$/))) continue;
+                inTable = true;
+                const isHook = cells.some(c => c.includes('Hook') || c.includes('hook'));
+                tableHtml += '<tr>';
+                for (let i = 0; i < Math.min(cells.length, 5); i++) {
+                    const cellClass = (i === 0 && isHook) ? 'shot-num shot-hook' : (i === 1 ? 'shot-time' : '');
+                    tableHtml += '<td class="' + cellClass + '">' + cells[i].trim() + '</td>';
+                }
+                tableHtml += '</tr>';
+            }
+        } else if (trimmed.startsWith('🎵') || trimmed.startsWith('🏷️') || trimmed.startsWith('BGM') || trimmed.startsWith('#')) {
+            extraHtml += '<div style="padding:12px 16px;font-size:13px;color:var(--text-secondary);border-top:1px solid var(--border-light);">' + trimmed + '</div>';
+        } else if (inTable && trimmed === '') {
+            break;
+        }
+    }
+    tableHtml += '</tbody></table>';
+
+    return tableHtml + extraHtml;
 }
 
-// Init
-document.addEventListener('DOMContentLoaded', () => loadModels());
+function copyDy() {
+    const tableEl = document.getElementById('dy-output-table');
+    const fullText = tableEl ? tableEl.innerText : '';
+    copyToClipboard(fullText).then(() => alert('已复制脚本！'));
+}
+
+function exportDyMarkdown() {
+    const tableEl = document.getElementById('dy-output-table');
+    let md = '# 抖音拍摄脚本\n\n';
+
+    // Convert HTML table to markdown
+    const rows = tableEl.querySelectorAll('tr');
+    rows.forEach((row, idx) => {
+        const cells = row.querySelectorAll('th, td');
+        const cellContents = Array.from(cells).map(c => c.innerText.trim());
+        md += '| ' + cellContents.join(' | ') + ' |\n';
+        if (idx === 0) {
+            md += '| ' + cellContents.map(() => '---').join(' | ') + ' |\n';
+        }
+    });
+
+    // Add remaining text
+    const extras = tableEl.querySelectorAll('div');
+    extras.forEach(div => { md += '\n' + div.innerText.trim() + '\n'; });
+
+    const blob = new Blob([md], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'douyin-script-' + Date.now() + '.md';
+    a.click();
+    URL.revokeObjectURL(url);
+}
 </script>
 {% endblock %}
